@@ -18,7 +18,7 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | Aspek | Keputusan |
 |-------|-----------|
 | **WiFi** | **AP Mode** dari Arduino R4 sendiri (connect langsung ke SSID Arduino) |
-| **ADC Resolusi** | **12-bit** (`analogReadResolution(12)`) → range 0–4095 (tetap 4 digit) |
+| **ADC Resolusi** | **14-bit** dibaca, lalu **dimapping ke 0–9999** agar tetap 4 digit |
 | **Kalibrasi** | Sama seperti SSP2000. Zero + High. High = **10 mm/m** |
 | **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
@@ -69,12 +69,21 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 Dari `sketch_BBM_SideSlip.V1.2.ino`:
 
 - Sensor di pin **A5**
-- Resolusi ADC di R4: **12-bit** (0–4095)
+- Resolusi ADC di R4: **14-bit** dibaca, lalu dimapping ke **0–9999**
 - Filter eksponensial (`alpha = 0.8`)
 - Saat menerima karakter **'R'** (ASCII 82):
   - Kirim data dalam format: `*XXXX#` (4 digit ADC)
-  - Contoh: `*0512#`, `*1024#`, `*4095#`
+  - Contoh: `*0512#`, `*5000#`, `*9999#`
 - Baudrate: 9600
+
+### Cara Mapping ADC 14-bit → 4 Digit
+
+```cpp
+analogReadResolution(14);               // baca 0 - 16383
+int raw14 = analogRead(A5);
+int adc4digit = map(raw14, 0, 16383, 0, 9999);
+// hasil: 0 - 9999 → tetap muat di *XXXX#
+```
 
 ## Format Kalibrasi & Settings (dari SSP2000)
 
@@ -87,7 +96,7 @@ Format di kode VB:
 ```
 *Koef_ADC Z Zero_ADC H High_ADC #
 ```
-- **Zero ADC**: nilai saat posisi nol (plat diam)
+- **Zero ADC**: nilai saat posisi nol (plat diam) — dalam range 0–9999
 - **High ADC**: nilai saat plat digeser **10 mm/m** (geser 10 mm jika panjang plat 1 m)
 - Koefisien dihitung dari selisih High - Zero
 
@@ -143,7 +152,7 @@ Contoh dari `SideSlipSettings.txt`:
 
 ```
 sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
-├── Sensor Reading (port dari V1.2, pin A5, 12-bit)
+├── Sensor Reading (port dari V1.2, pin A5, 14-bit → map 0-9999)
 ├── Serial Protocol Handler (SSP2000 - tetap sama, 4 digit)
 ├── WiFi AP Mode
 ├── Web Server (4 halaman)
@@ -155,7 +164,7 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 1. Login sebagai ID:1 atau sa.
 2. Buka halaman `/kalibrasi`.
-3. Posisi nol → tekan "Set Zero" → simpan Zero ADC.
+3. Posisi nol → tekan "Set Zero" → simpan Zero ADC (0–9999).
 4. Geser plat **10 mm/m** → tekan "Set High" → simpan High ADC.
 5. Tekan "SAVE" → hitung koefisien → simpan ke EEPROM dalam format `*KoefZZeroHHigh#`.
 6. Semua halaman berikutnya menggunakan nilai kalibrasi dari EEPROM.
@@ -176,5 +185,5 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 ---
 
-**Status:** Detail desain sudah lengkap termasuk resolusi ADC 12-bit dan kalibrasi 10 mm/m.  
+**Status:** Detail desain sudah lengkap termasuk mapping ADC 14-bit → 0–9999 dan kalibrasi 10 mm/m.  
 Siap dilanjutkan ke tahap coding `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`.
