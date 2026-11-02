@@ -24,6 +24,58 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
 | **Noise Tolerance** | Dihitung dari max **9999** (bukan 1023) |
 
+## Port & Serial yang Dipakai
+
+| Port | Fungsi | Baudrate | Keterangan |
+|------|--------|----------|------------|
+| **Serial** (USB) | Komunikasi dengan software **SSP2000** | 9600 | Port utama (sama seperti R3) |
+| **Serial1** | Cadangan / alternatif | 9600 | Hardware serial kedua di R4 |
+| **WiFi AP** | Web UI + WebSocket | - | SSID: `SideSlip-R4` |
+| **Pin A5** | Sensor side slip (analog) | - | ADC 14-bit → mapping 0–9999 |
+
+### Protokol Serial SSP2000
+
+- Arduino **menunggu** karakter **'R'** dari software.
+- Setelah terima **'R'**, Arduino kirim data ADC dalam format: `*XXXX#`
+- Contoh: `*0512#`, `*5000#`, `*9999#`
+- Data yang dikirim adalah nilai **setelah mapping** (0–9999) + filter.
+
+## Cara Pengukuran (Alur Lengkap)
+
+### 1. Mode Serial (SSP2000)
+```
+Software SSP2000  --kirim 'R'-->  Arduino
+Arduino           --balas *XXXX#-->  Software SSP2000
+```
+- Software yang hitung nilai mm/m berdasarkan kalibrasi yang tersimpan di file text.
+- Arduino hanya bertugas mengirim data ADC mentah (yang sudah difilter).
+
+### 2. Mode Web UI (Standalone)
+```
+Browser  --login-->  Arduino
+Arduino  --kirim data JSON via WebSocket-->  Browser
+Browser  --command (kalibrasi/config)-->  Arduino
+```
+- Semua perhitungan mm/m dilakukan di Arduino.
+- Kalibrasi & settings disimpan di EEPROM.
+
+### 3. Alur Kalibrasi (Web UI)
+1. Login sebagai **ID:1** atau **sa**.
+2. Buka halaman `/kalibrasi`.
+3. Plat dalam posisi **nol** → tekan **"Set Zero"** → simpan Zero ADC.
+4. Geser plat **10 mm/m** (10 mm jika plat panjang 1 m) → tekan **"Set High"** → simpan High ADC.
+5. Tekan **"SAVE"** → hitung koefisien → simpan ke EEPROM.
+6. Format simpan: `*KoefZZeroHHigh#`
+
+### 4. Alur Pengukuran (Web UI)
+1. Login (ID:1, ID:2, atau sa).
+2. Halaman utama menampilkan nilai real-time.
+3. Saat pengukuran:
+   - Tunggu stabil sesuai **Wait Time Measure** (default 3 detik).
+   - Abaikan perubahan kecil sesuai **Noise Tolerance** (default 0.3% dari 9999).
+   - Ambil nilai maksimal dalam jendela waktu tersebut.
+4. Hasil ditampilkan dalam **mm/m**.
+
 ## Sistem Login (Halaman Utama)
 
 Login wajib di halaman utama sebelum mengakses fitur lain.
@@ -42,14 +94,6 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 - Setelah login, session disimpan di browser (localStorage / session).
 - Halaman Kalibrasi, Config, dan Hasil hanya bisa diakses oleh ID:1 atau ID:sa.
 
-### Command WebSocket untuk Login & Akun
-
-```json
-{ "cmd": "login", "id": "1", "pw": "1" }
-{ "cmd": "change_account", "target": "1", "new_id": "kepala", "new_pw": "baru123" }
-{ "cmd": "change_account", "target": "2", "new_id": "penguji", "new_pw": "uji456" }
-```
-
 ## Arsitektur Solusi
 
 ### Dual Interface
@@ -57,33 +101,12 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 ```
 [Sensors A5] → [Arduino Uno R4 WiFi]
                     ├── USB Serial (Serial) → SSP2000 (protokol lama)
-                    ├── Serial1 (opsional)
+                    ├── Serial1 (cadangan)
                     └── WiFi AP + WebSocket + Web Server → Browser
                           ├── /          → Halaman Utama (dengan Login)
                           ├── /kalibrasi → Kalibrasi (hanya ID1 / sa)
                           ├── /config    → Config (hanya ID1 / sa)
                           └── /hasil     → Hasil (hanya ID1 / sa)
-```
-
-## Protokol Serial yang Sudah Ada (V1.2) — Harus Dipertahankan
-
-Dari `sketch_BBM_SideSlip.V1.2.ino`:
-
-- Sensor di pin **A5**
-- Resolusi ADC di R4: **14-bit** dibaca, lalu dimapping ke **0–9999**
-- Filter eksponensial (`alpha = 0.8`)
-- Saat menerima karakter **'R'** (ASCII 82):
-  - Kirim data dalam format: `*XXXX#` (4 digit ADC)
-  - Contoh: `*0512#`, `*5000#`, `*9999#`
-- Baudrate: 9600
-
-### Cara Mapping ADC 14-bit → 4 Digit
-
-```cpp
-analogReadResolution(14);               // baca 0 - 16383
-int raw14 = analogRead(A5);
-int adc4digit = map(raw14, 0, 16383, 0, 9999);
-// hasil: 0 - 9999 → tetap muat di *XXXX#
 ```
 
 ## Format Kalibrasi & Settings (dari SSP2000)
@@ -98,7 +121,7 @@ Format di kode VB:
 *Koef_ADC Z Zero_ADC H High_ADC #
 ```
 - **Zero ADC**: nilai saat posisi nol (plat diam) — dalam range 0–9999
-- **High ADC**: nilai saat plat digeser **10 mm/m** (geser 10 mm jika panjang plat 1 m)
+- **High ADC**: nilai saat plat digeser **10 mm/m**
 - Koefisien dihitung dari selisih High - Zero
 
 ### Settings (disimpan di EEPROM)
@@ -147,35 +170,6 @@ Contoh dari `SideSlipSettings.txt`:
 { "cmd": "get_result" }
 ```
 
-## Rencana Implementasi Firmware
-
-### Struktur Sketch
-
-```
-sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
-├── Sensor Reading (port dari V1.2, pin A5, 14-bit → map 0-9999)
-├── Serial Protocol Handler (SSP2000 - tetap sama, 4 digit)
-├── WiFi AP Mode
-├── Web Server (4 halaman)
-├── WebSocket Server
-└── EEPROM Storage (kalibrasi + settings + akun ID1 & ID2)
-```
-
-### Alur Kalibrasi (mengikuti SSP2000)
-
-1. Login sebagai ID:1 atau sa.
-2. Buka halaman `/kalibrasi`.
-3. Posisi nol → tekan "Set Zero" → simpan Zero ADC (0–9999).
-4. Geser plat **10 mm/m** → tekan "Set High" → simpan High ADC.
-5. Tekan "SAVE" → hitung koefisien → simpan ke EEPROM dalam format `*KoefZZeroHHigh#`.
-6. Semua halaman berikutnya menggunakan nilai kalibrasi dari EEPROM.
-
-## Library yang Dibutuhkan
-
-- `WiFiS3` (bawaan R4 WiFi)
-- `EEPROM` (bawaan)
-- `ArduinoJson` (recommended)
-
 ## Yang Sudah Ada di Kerangka Kode
 
 File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`
@@ -211,5 +205,5 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 ---
 
-**Status:** Kerangka kode sudah ada. Detail desain lengkap.  
+**Status:** Kerangka kode sudah ada. Penjelasan port serial dan alur pengukuran sudah dilengkapi.  
 Siap dilanjutkan ke implementasi bagian yang masih kurang di atas.
