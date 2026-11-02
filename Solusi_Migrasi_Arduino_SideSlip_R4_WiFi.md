@@ -18,7 +18,8 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | Aspek | Keputusan |
 |-------|-----------|
 | **WiFi** | **AP Mode** dari Arduino R4 sendiri (connect langsung ke SSID Arduino) |
-| **Kalibrasi** | Sama seperti SSP2000 (PDF + kode VB). Simpan Zero ADC + High ADC |
+| **ADC Resolusi** | **12-bit** (`analogReadResolution(12)`) → range 0–4095 (tetap 4 digit) |
+| **Kalibrasi** | Sama seperti SSP2000. Zero + High. High = **10 mm/m** |
 | **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
 
@@ -68,10 +69,11 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 Dari `sketch_BBM_SideSlip.V1.2.ino`:
 
 - Sensor di pin **A5**
+- Resolusi ADC di R4: **12-bit** (0–4095)
 - Filter eksponensial (`alpha = 0.8`)
 - Saat menerima karakter **'R'** (ASCII 82):
   - Kirim data dalam format: `*XXXX#` (4 digit ADC)
-  - Contoh: `*0512#`, `*0102#`, `*0009#`
+  - Contoh: `*0512#`, `*1024#`, `*4095#`
 - Baudrate: 9600
 
 ## Format Kalibrasi & Settings (dari SSP2000)
@@ -85,8 +87,9 @@ Format di kode VB:
 ```
 *Koef_ADC Z Zero_ADC H High_ADC #
 ```
-- Zero ADC: nilai saat posisi nol
-- High ADC: nilai saat posisi tinggi (untuk hitung koefisien)
+- **Zero ADC**: nilai saat posisi nol (plat diam)
+- **High ADC**: nilai saat plat digeser **10 mm/m** (geser 10 mm jika panjang plat 1 m)
+- Koefisien dihitung dari selisih High - Zero
 
 ### Settings (disimpan di EEPROM)
 Contoh dari `SideSlipSettings.txt`:
@@ -105,7 +108,7 @@ Contoh dari `SideSlipSettings.txt`:
 | Halaman | Path | Fungsi Utama | Akses |
 |---------|------|--------------|-------|
 | **Halaman Utama** | `/` | Login + Tampilan real-time nilai side slip, status sensor, grafik live | Semua (setelah login) |
-| **Kalibrasi** | `/kalibrasi` | Set Zero ADC + High ADC, simpan ke EEPROM | ID:1 / sa |
+| **Kalibrasi** | `/kalibrasi` | Set Zero ADC + High ADC (10 mm/m), simpan ke EEPROM | ID:1 / sa |
 | **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
 | **Hasil** | `/hasil` | Hasil pengujian terakhir | ID:1 / sa |
 
@@ -140,8 +143,8 @@ Contoh dari `SideSlipSettings.txt`:
 
 ```
 sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
-├── Sensor Reading (port dari V1.2, pin A5)
-├── Serial Protocol Handler (SSP2000 - tetap sama)
+├── Sensor Reading (port dari V1.2, pin A5, 12-bit)
+├── Serial Protocol Handler (SSP2000 - tetap sama, 4 digit)
 ├── WiFi AP Mode
 ├── Web Server (4 halaman)
 ├── WebSocket Server
@@ -153,7 +156,7 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 1. Login sebagai ID:1 atau sa.
 2. Buka halaman `/kalibrasi`.
 3. Posisi nol → tekan "Set Zero" → simpan Zero ADC.
-4. Posisi tinggi → tekan "Set High" → simpan High ADC.
+4. Geser plat **10 mm/m** → tekan "Set High" → simpan High ADC.
 5. Tekan "SAVE" → hitung koefisien → simpan ke EEPROM dalam format `*KoefZZeroHHigh#`.
 6. Semua halaman berikutnya menggunakan nilai kalibrasi dari EEPROM.
 
@@ -173,5 +176,5 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 ---
 
-**Status:** Detail desain sudah lengkap termasuk sistem login.  
+**Status:** Detail desain sudah lengkap termasuk resolusi ADC 12-bit dan kalibrasi 10 mm/m.  
 Siap dilanjutkan ke tahap coding `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`.
