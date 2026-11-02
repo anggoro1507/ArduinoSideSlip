@@ -7,10 +7,10 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 - Tetap membaca sensor data mentah (raw sensor data) sama seperti versi R3.
 - **Kompatibel dengan software SSP2000** (protokol serial yang sudah berjalan normal tetap didukung via USB Serial).
 - Menambahkan **WebSocket + Web UI** dengan struktur mirip SSP2000:
-  - **Halaman Utama** (Main / Pengujian)
+  - **Halaman Utama** (Main)
   - **Kalibrasi**
   - **Config**
-  - **Hasil**
+  - **Pengujian**
 - Semua sudah include di board R4 WiFi (WiFi onboard).
 
 ## Keputusan Desain (Sudah Dikonfirmasi)
@@ -65,26 +65,40 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 - Yang diambil dari **kalibrasi** adalah **koefisien** (bukan zero tetap).
 - **Zero bersifat dinamis** (otomatis diupdate saat pengujian).
 - Selisih posisi plat saat berhenti dengan zero yang tersimpan **tidak masalah**.
+- Nilai yang dicatat adalah **deviasi terbesar** dari zero (bisa **plus** atau **minus**).
 
 ### Alur Pengujian
 
 1. **Alat aktif** → ambil nilai ADC saat ini sebagai **zero** (otomatis).
 2. **Mobil lewat plat** → terjadi pergerakan (nilai ADC naik atau turun).
-3. Sistem mencatat **nilai maksimum** yang terjadi selama mobil lewat.
+3. Sistem mencatat **deviasi terbesar** dari zero:
+   - Jika plat geser ke **kanan** → nilai **plus** terbesar.
+   - Jika plat geser ke **kiri** → nilai **minus** terbesar (paling kecil).
 4. Setelah mobil lewat, nilai raw kembali ke posisi stabil.
 5. Jika tidak ada perubahan selama **Wait Time Measure** (default 3 detik) dalam batas **Noise Tolerance** (default 0.3% dari 9999):
    - Nilai ADC yang stabil itu menjadi **zero baru**.
-6. **Display menampilkan nilai max** yang tadi terjadi saat mobil lewat (dalam mm/m, dihitung dengan koefisien).
+6. **Display menampilkan nilai deviasi terbesar** (dalam mm/m, dihitung dengan koefisien). Bisa positif (+) atau negatif (-).
 7. Jika ada mobil berikutnya lewat, proses otomatis diulang.
 
 ### Contoh Sederhana
+
+**Plat geser ke kanan (plus):**
 ```
 Zero awal     = 5000
-Mobil lewat   = nilai naik sampai 6500  → Max = 6500
-Mobil lewat   = nilai turun kembali
-Stabil 3 detik di 5100 (dalam toleransi 0.3%) → Zero baru = 5100
-Display       = nilai max (6500) dihitung ke mm/m
+Mobil lewat   = nilai naik sampai 6500  → Deviasi terbesar = +1500
+Stabil 3 detik di 5100 → Zero baru = 5100
+Display       = +1.5 mm/m (contoh)
 ```
+
+**Plat geser ke kiri (minus):**
+```
+Zero awal     = 5000
+Mobil lewat   = nilai turun sampai 3500  → Deviasi terbesar = -1500
+Stabil 3 detik di 4900 → Zero baru = 4900
+Display       = -1.5 mm/m (contoh)
+```
+
+> **Penting:** Jangan hanya ambil nilai absolut (MAX). Harus mendukung nilai **minus** agar arah side slip benar.
 
 ## Arsitektur Solusi
 
@@ -95,10 +109,10 @@ Display       = nilai max (6500) dihitung ke mm/m
                     ├── USB Serial (Serial) → SSP2000 (protokol lama)
                     ├── Serial1 (cadangan)
                     └── WiFi AP + WebSocket + Web Server → Browser
-                          ├── /          → Halaman Utama / Pengujian (semua akun)
-                          ├── /kalibrasi → Kalibrasi (hanya ID1 / sa)
-                          ├── /config    → Config (hanya ID1 / sa)
-                          └── /hasil     → Hasil pengujian terakhir (semua akun)
+                          ├── /            → Halaman Utama (login)
+                          ├── /pengujian   → Pengujian real-time (semua akun)
+                          ├── /kalibrasi   → Kalibrasi (hanya ID1 / sa)
+                          └── /config      → Config (hanya ID1 / sa)
 ```
 
 ## Format Kalibrasi & Settings (dari SSP2000)
@@ -132,10 +146,10 @@ Contoh dari `SideSlipSettings.txt`:
 
 | Halaman | Path | Fungsi Utama | Akses |
 |---------|------|--------------|-------|
-| **Halaman Utama** | `/` | Login + Pengujian real-time (zero dinamis + max value) | Semua akun |
+| **Halaman Utama** | `/` | Login | Semua |
+| **Pengujian** | `/pengujian` | Pengujian real-time (zero dinamis + deviasi plus/minus) | Semua akun |
 | **Kalibrasi** | `/kalibrasi` | Set Zero + High (10 mm/m) untuk hitung koefisien, simpan ke EEPROM | ID:1 / sa |
 | **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
-| **Hasil** | `/hasil` | Hasil pengujian terakhir (nilai max) | Semua akun |
 
 ### Komunikasi WebSocket (JSON)
 
@@ -144,9 +158,9 @@ Contoh dari `SideSlipSettings.txt`:
 {
   "type": "data",
   "raw": 512,
-  "value": 1.25,
+  "value": -1.25,
   "unit": "mm/m",
-  "max_value": 2.5,
+  "peak_value": -2.5,
   "status": "measuring"
 }
 ```
@@ -181,19 +195,19 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 | 4 | **Login System** | Belum | Validasi ID/PW + kontrol akses |
 | 5 | **Halaman Kalibrasi** | Belum | Set Zero + High untuk hitung koefisien |
 | 6 | **Halaman Config** | Belum | Ubah noise tolerance, wait time, ubah akun |
-| 7 | **Logika Pengujian** | Belum | Zero dinamis + catat max + deteksi stabil 3 detik |
-| 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai max |
+| 7 | **Logika Pengujian** | Belum | Zero dinamis + catat deviasi terbesar (plus/minus) + deteksi stabil 3 detik |
+| 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai peak (bisa negatif) |
 | 9 | **Testing Dual Mode** | Belum | Uji Serial SSP2000 + WebSocket bersamaan |
 
 ## Langkah Kerja Selanjutnya
 
 1. Implementasi **EEPROM** (paling dasar).
 2. Buat **WebSocket** + halaman utama dengan login.
-3. Tambah logika **pengujian** (zero dinamis + max value + stabil).
+3. Tambah logika **pengujian** (zero dinamis + peak plus/minus + stabil).
 4. Tambah halaman **Kalibrasi** dan **Config**.
 5. Testing dual mode (Serial + WebSocket).
 
 ---
 
-**Status:** Penjelasan pengujian sudah diperbaiki sesuai alur SSP2000 (zero dinamis + koefisien).  
+**Status:** `/hasil` sudah diganti menjadi `/pengujian`. Penjelasan nilai peak sudah mendukung plus dan minus.  
 Siap dilanjutkan ke implementasi.
