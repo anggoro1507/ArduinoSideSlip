@@ -22,6 +22,7 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | **Kalibrasi** | Sama seperti SSP2000. Zero + High. High = **10 mm/m** |
 | **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
+| **Noise Tolerance** | Dihitung dari max **9999** (bukan 1023) |
 
 ## Sistem Login (Halaman Utama)
 
@@ -105,7 +106,7 @@ Contoh dari `SideSlipSettings.txt`:
 ```
 *0.3T3#
 ```
-- Noise Zero Tolerance: `0.3` (%)
+- Noise Zero Tolerance: `0.3` (%) → dihitung dari max **9999**
 - Wait Time Measure: `3` (detik)
 
 ### Akun (disimpan di EEPROM)
@@ -175,15 +176,40 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 - `EEPROM` (bawaan)
 - `ArduinoJson` (recommended)
 
+## Yang Sudah Ada di Kerangka Kode
+
+File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`
+
+- Sensor reading + mapping 14-bit → 0–9999
+- Filter eksponensial
+- Serial protocol SSP2000 (Serial + Serial1)
+- Struktur login & variabel kalibrasi/settings
+- Placeholder EEPROM, Web Server, WebSocket
+
+## Yang Masih Kurang Sebelum Coding Lengkap
+
+| No | Bagian | Status | Keterangan |
+|----|--------|--------|------------|
+| 1 | **EEPROM** | Belum | Load/save kalibrasi, settings, akun ID1 & ID2 |
+| 2 | **Web Server** | Belum | 4 halaman HTML (Utama, Kalibrasi, Config, Hasil) |
+| 3 | **WebSocket** | Belum | Streaming data real-time + terima command |
+| 4 | **Login System** | Belum | Validasi ID/PW, session, kontrol akses halaman |
+| 5 | **Halaman Kalibrasi** | Belum | Set Zero, Set High (10 mm/m), SAVE ke EEPROM |
+| 6 | **Halaman Config** | Belum | Ubah noise tolerance, wait time, ubah akun |
+| 7 | **Halaman Hasil** | Belum | Tampilkan hasil pengujian terakhir |
+| 8 | **Perhitungan mm/m** | Belum | Fungsi hitung side slip dari kalibrasi |
+| 9 | **Noise & Wait Time** | Belum | Logika stabilitas pengukuran (seperti di VB) |
+| 10 | **Testing Dual Mode** | Belum | Uji Serial SSP2000 + WebSocket bersamaan |
+
 ## Langkah Kerja Selanjutnya
 
-1. Porting sensor + serial protocol dari V1.2 (uji dengan SSP2000).
-2. Buat WiFi AP + WebSocket dasar + halaman utama dengan login.
-3. Tambah halaman Kalibrasi, Config, dan Hasil (dengan kontrol akses).
-4. Integrasi penyimpanan EEPROM untuk kalibrasi, settings, dan akun.
-5. Testing dual mode (Serial + WebSocket bersamaan).
+1. Implementasi **EEPROM** (paling dasar).
+2. Buat **WebSocket** + halaman utama dengan login.
+3. Tambah halaman **Kalibrasi**, **Config**, dan **Hasil**.
+4. Integrasi perhitungan mm/m + logika pengukuran.
+5. Testing dual mode (Serial + WebSocket).
 
 ---
 
-**Status:** Detail desain sudah lengkap termasuk mapping ADC 14-bit → 0–9999 dan kalibrasi 10 mm/m.  
-Siap dilanjutkan ke tahap coding `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`.
+**Status:** Kerangka kode sudah ada. Detail desain lengkap.  
+Siap dilanjutkan ke implementasi bagian yang masih kurang di atas.
