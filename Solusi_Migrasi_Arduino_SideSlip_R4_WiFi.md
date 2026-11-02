@@ -22,6 +22,32 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
 
+## Sistem Login (Halaman Utama)
+
+Login wajib di halaman utama sebelum mengakses fitur lain.
+
+| Akun | ID (Default) | Password (Default) | Role | Akses | Penyimpanan |
+|------|--------------|---------------------|------|-------|-------------|
+| **Kepala** | `1` | `1` | Kepala | Semua akses + bisa ubah ID/PW sendiri dan ID:2 | EEPROM |
+| **Penguji** | `2` | `2` | Penguji | Hanya pengukuran / realtime | EEPROM |
+| **Admin** | `sa` | `@abcd1234` | Admin | Full admin | **Hardcoded** (tidak disimpan di EEPROM) |
+
+### Aturan Login
+- ID:1 (Kepala) bisa mengubah:
+  - ID & password miliknya sendiri
+  - ID & password ID:2 (Penguji)
+- ID:sa tidak bisa diubah lewat UI dan tidak disimpan di EEPROM.
+- Setelah login, session disimpan di browser (localStorage / session).
+- Halaman Kalibrasi, Config, dan Hasil hanya bisa diakses oleh ID:1 atau ID:sa.
+
+### Command WebSocket untuk Login & Akun
+
+```json
+{ "cmd": "login", "id": "1", "pw": "1" }
+{ "cmd": "change_account", "target": "1", "new_id": "kepala", "new_pw": "baru123" }
+{ "cmd": "change_account", "target": "2", "new_id": "penguji", "new_pw": "uji456" }
+```
+
 ## Arsitektur Solusi
 
 ### Dual Interface
@@ -31,10 +57,10 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
                     ├── USB Serial (Serial) → SSP2000 (protokol lama)
                     ├── Serial1 (opsional)
                     └── WiFi AP + WebSocket + Web Server → Browser
-                          ├── /          → Halaman Utama
-                          ├── /kalibrasi → Kalibrasi
-                          ├── /config    → Config
-                          └── /hasil     → Hasil
+                          ├── /          → Halaman Utama (dengan Login)
+                          ├── /kalibrasi → Kalibrasi (hanya ID1 / sa)
+                          ├── /config    → Config (hanya ID1 / sa)
+                          └── /hasil     → Hasil (hanya ID1 / sa)
 ```
 
 ## Protokol Serial yang Sudah Ada (V1.2) — Harus Dipertahankan
@@ -70,14 +96,18 @@ Contoh dari `SideSlipSettings.txt`:
 - Noise Zero Tolerance: `0.3` (%)
 - Wait Time Measure: `3` (detik)
 
+### Akun (disimpan di EEPROM)
+- ID:1 + Password:1 (Kepala)
+- ID:2 + Password:2 (Penguji)
+
 ## Struktur Web UI (Mirip SSP2000)
 
-| Halaman | Path | Fungsi Utama |
-|---------|------|--------------|
-| **Halaman Utama** | `/` | Tampilan real-time nilai side slip, status sensor, grafik live |
-| **Kalibrasi** | `/kalibrasi` | Set Zero ADC + High ADC, simpan ke EEPROM |
-| **Config** | `/config` | Noise tolerance, wait time, dll (simpan ke EEPROM) |
-| **Hasil** | `/hasil` | Hasil pengujian terakhir |
+| Halaman | Path | Fungsi Utama | Akses |
+|---------|------|--------------|-------|
+| **Halaman Utama** | `/` | Login + Tampilan real-time nilai side slip, status sensor, grafik live | Semua (setelah login) |
+| **Kalibrasi** | `/kalibrasi` | Set Zero ADC + High ADC, simpan ke EEPROM | ID:1 / sa |
+| **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
+| **Hasil** | `/hasil` | Hasil pengujian terakhir | ID:1 / sa |
 
 ### Komunikasi WebSocket (JSON)
 
@@ -95,10 +125,12 @@ Contoh dari `SideSlipSettings.txt`:
 
 **Command dari Browser → Arduino:**
 ```json
+{ "cmd": "login", "id": "1", "pw": "1" }
 { "cmd": "calibrate_zero" }
 { "cmd": "calibrate_high" }
 { "cmd": "save_calibration" }
 { "cmd": "save_settings", "noise": 0.3, "wait_time": 3 }
+{ "cmd": "change_account", "target": "2", "new_id": "penguji", "new_pw": "uji456" }
 { "cmd": "get_result" }
 ```
 
@@ -113,16 +145,17 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 ├── WiFi AP Mode
 ├── Web Server (4 halaman)
 ├── WebSocket Server
-└── EEPROM Storage (kalibrasi + settings)
+└── EEPROM Storage (kalibrasi + settings + akun ID1 & ID2)
 ```
 
 ### Alur Kalibrasi (mengikuti SSP2000)
 
-1. User buka halaman `/kalibrasi`.
-2. Posisi nol → tekan "Set Zero" → simpan Zero ADC.
-3. Posisi tinggi → tekan "Set High" → simpan High ADC.
-4. Tekan "SAVE" → hitung koefisien → simpan ke EEPROM dalam format `*KoefZZeroHHigh#`.
-5. Semua halaman berikutnya menggunakan nilai kalibrasi dari EEPROM.
+1. Login sebagai ID:1 atau sa.
+2. Buka halaman `/kalibrasi`.
+3. Posisi nol → tekan "Set Zero" → simpan Zero ADC.
+4. Posisi tinggi → tekan "Set High" → simpan High ADC.
+5. Tekan "SAVE" → hitung koefisien → simpan ke EEPROM dalam format `*KoefZZeroHHigh#`.
+6. Semua halaman berikutnya menggunakan nilai kalibrasi dari EEPROM.
 
 ## Library yang Dibutuhkan
 
@@ -133,12 +166,12 @@ sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 ## Langkah Kerja Selanjutnya
 
 1. Porting sensor + serial protocol dari V1.2 (uji dengan SSP2000).
-2. Buat WiFi AP + WebSocket dasar + halaman utama.
-3. Tambah halaman Kalibrasi, Config, dan Hasil.
-4. Integrasi penyimpanan EEPROM untuk kalibrasi & settings.
+2. Buat WiFi AP + WebSocket dasar + halaman utama dengan login.
+3. Tambah halaman Kalibrasi, Config, dan Hasil (dengan kontrol akses).
+4. Integrasi penyimpanan EEPROM untuk kalibrasi, settings, dan akun.
 5. Testing dual mode (Serial + WebSocket bersamaan).
 
 ---
 
-**Status:** Detail desain sudah lengkap berdasarkan input user.  
+**Status:** Detail desain sudah lengkap termasuk sistem login.  
 Siap dilanjutkan ke tahap coding `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`.
