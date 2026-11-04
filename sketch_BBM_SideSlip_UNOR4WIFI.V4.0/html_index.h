@@ -13,10 +13,43 @@ const char HTML_INDEX[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SideSlip - Login</title>
+  <style>
+    /* CSS akan di-inject dari web_common.h */
+  </style>
 </head>
 <body>
-  <h1>SideSlip Login</h1>
-  <!-- TODO: Form login -->
+  <div class="container">
+    <h1>SideSlip Login</h1>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="id">ID</label>
+        <input type="text" id="id" name="id" maxlength="15" required>
+      </div>
+      <div class="form-group">
+        <label for="pw">Password</label>
+        <input type="password" id="pw" name="pw" maxlength="15" required>
+      </div>
+      <button type="submit">Login</button>
+    </form>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const id = document.getElementById('id').value.trim();
+      const pw = document.getElementById('pw').value;
+
+      // TODO: Kirim ke Arduino via WebSocket / fetch
+      // Sementara simpan di localStorage untuk testing UI
+      if (id && pw) {
+        localStorage.setItem('login_id', id);
+        window.location.href = '/pengujian';
+      } else {
+        document.getElementById('error').textContent = 'ID dan Password harus diisi';
+      }
+    });
+  </script>
 </body>
 </html>
 )rawliteral";
