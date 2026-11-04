@@ -22,8 +22,8 @@
 #define SERIAL_BAUD         9600
 
 // WiFi AP
-const char* AP_SSID         = "SideSlip-R4";
-const char* AP_PASSWORD     = "sideslip123";
+const char* AP_SSID         = "SideSlipBBM";
+const char* AP_PASSWORD     = "12345678";
 
 // Admin hardcoded
 const char* ADMIN_ID        = "sa";
@@ -47,7 +47,7 @@ float sensorFilter          = 0;
 
 // ==================== EEPROM MAP ====================
 // Alamat EEPROM (total ~100 byte)
-#define EE_MAGIC            0     // 2 byte magic number (0xA55A = valid)
+#define EE_MAGIC            0     // 2 byte magic number (0xB2C0 = valid)
 #define EE_CAL_ZERO         2     // 2 byte int
 #define EE_CAL_HIGH         4     // 2 byte int
 #define EE_NOISE            6     // 4 byte float
@@ -115,7 +115,7 @@ void loadFromEEPROM() {
   uint16_t magic;
   EEPROM.get(EE_MAGIC, magic);
 
-  if (magic != 0xA55A) {
+  if (magic != 0xB2C0) {
     // Belum pernah disimpan → pakai default lalu simpan
     saveToEEPROM();
     return;
@@ -142,7 +142,7 @@ void loadFromEEPROM() {
 }
 
 void saveToEEPROM() {
-  uint16_t magic = 0xA55A;
+  uint16_t magic = 0xB2C0;
   EEPROM.put(EE_MAGIC, magic);
 
   EEPROM.put(EE_CAL_ZERO, cal_zero_adc);
