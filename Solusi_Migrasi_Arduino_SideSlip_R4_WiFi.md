@@ -18,11 +18,14 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 | Aspek | Keputusan |
 |-------|-----------|
 | **WiFi** | **AP Mode** dari Arduino R4 sendiri (connect langsung ke SSID Arduino) |
+| **SSID** | `SideSlipBBM` |
+| **Password WiFi** | `12345678` |
 | **ADC Resolusi** | **14-bit** dibaca, lalu **dimapping ke 0–9999** agar tetap 4 digit |
 | **Kalibrasi** | Simpan **koefisien** (dari Zero + High). High = **10 mm/m** |
 | **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
 | **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
 | **Noise Tolerance** | Dihitung dari max **9999** (bukan 1023) |
+| **Magic Bytes** | `0xB2C0` |
 
 ## Port & Serial yang Dipakai
 
@@ -30,7 +33,7 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 |------|--------|----------|------------|
 | **Serial** (USB) | Komunikasi dengan software **SSP2000** | 9600 | Port utama (sama seperti R3) |
 | **Serial1** | Cadangan / alternatif | 9600 | Hardware serial kedua di R4 |
-| **WiFi AP** | Web UI + WebSocket | - | SSID: `SideSlip-R4` |
+| **WiFi AP** | Web UI + WebSocket | - | SSID: `SideSlipBBM` / Password: `12345678` |
 | **Pin A5** | Sensor side slip (analog) | - | ADC 14-bit → mapping 0–9999 |
 
 ### Protokol Serial SSP2000
@@ -183,13 +186,14 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 - Filter eksponensial
 - Serial protocol SSP2000 (Serial + Serial1)
 - Struktur login & variabel kalibrasi/settings
-- Placeholder EEPROM, Web Server, WebSocket
+- EEPROM load/save (magic `0xB2C0`)
+- WiFi AP: `SideSlipBBM` / `12345678`
 
 ## Yang Masih Kurang Sebelum Coding Lengkap
 
 | No | Bagian | Status | Keterangan |
 |----|--------|--------|------------|
-| 1 | **EEPROM** | Belum | Load/save kalibrasi (koefisien), settings, akun ID1 & ID2 |
+| 1 | **EEPROM** | Sudah | Load/save kalibrasi, settings, akun ID1 & ID2 |
 | 2 | **Web Server** | Belum | 4 halaman HTML |
 | 3 | **WebSocket** | Belum | Streaming data real-time + terima command |
 | 4 | **Login System** | Belum | Validasi ID/PW + kontrol akses |
@@ -201,13 +205,12 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 ## Langkah Kerja Selanjutnya
 
-1. Implementasi **EEPROM** (paling dasar).
-2. Buat **WebSocket** + halaman utama dengan login.
-3. Tambah logika **pengujian** (zero dinamis + peak plus/minus + stabil).
-4. Tambah halaman **Kalibrasi** dan **Config**.
-5. Testing dual mode (Serial + WebSocket).
+1. Buat **WebSocket** + halaman utama dengan login.
+2. Tambah logika **pengujian** (zero dinamis + peak plus/minus + stabil).
+3. Tambah halaman **Kalibrasi** dan **Config**.
+4. Testing dual mode (Serial + WebSocket).
 
 ---
 
-**Status:** `/hasil` sudah diganti menjadi `/pengujian`. Penjelasan nilai peak sudah mendukung plus dan minus.  
+**Status:** SSID WiFi dan magic bytes sudah disesuaikan dengan kode `.ino`.  
 Siap dilanjutkan ke implementasi.
