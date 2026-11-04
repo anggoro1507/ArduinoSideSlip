@@ -5,7 +5,7 @@
  * Fitur:
  * - Sensor A5, ADC 14-bit dimapping ke 0-9999
  * - Serial protocol kompatibel SSP2000 (*XXXX# saat terima 'R')
- * - WiFi AP + WebSocket + Web UI (Halaman Utama, Kalibrasi, Config, Hasil)
+ * - WiFi AP + WebSocket + Web UI
  * - Login: ID1 (Kepala), ID2 (Penguji), sa (Admin hardcoded)
  * - EEPROM untuk kalibrasi, settings, akun
  * - Dual Serial (Serial + Serial1)
@@ -29,29 +29,43 @@ const char* AP_PASSWORD     = "sideslip123";
 const char* ADMIN_ID        = "sa";
 const char* ADMIN_PW        = "@abcd1234";
 
-// Default akun (akan disimpan di EEPROM)
+// Default akun
 String account1_id          = "1";
 String account1_pw          = "1";
 String account2_id          = "2";
 String account2_pw          = "2";
 
-// Kalibrasi & Settings (dari EEPROM)
+// Kalibrasi & Settings
 int cal_zero_adc            = 0;
 int cal_high_adc            = 0;
-float noise_tolerance       = 0.3;   // % dari max 9999
-int wait_time_measure       = 3;     // detik
+float noise_tolerance       = 0.3f;   // % dari max 9999
+int wait_time_measure       = 3;      // detik
 
 // Filter
-float alpha                 = 0.8;
+float alpha                 = 0.8f;
 float sensorFilter          = 0;
+
+// ==================== EEPROM MAP ====================
+// Alamat EEPROM (total ~100 byte)
+#define EE_MAGIC            0     // 2 byte magic number (0xA55A = valid)
+#define EE_CAL_ZERO         2     // 2 byte int
+#define EE_CAL_HIGH         4     // 2 byte int
+#define EE_NOISE            6     // 4 byte float
+#define EE_WAIT_TIME        10    // 2 byte int
+#define EE_ACC1_ID          12    // 16 byte string
+#define EE_ACC1_PW          28    // 16 byte string
+#define EE_ACC2_ID          44    // 16 byte string
+#define EE_ACC2_PW          60    // 16 byte string
+#define EE_END              76
 
 // ==================== SETUP ====================
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  Serial1.begin(SERIAL_BAUD);   // Serial hardware kedua
+  Serial1.begin(SERIAL_BAUD);
 
-  analogReadResolution(14);     // 14-bit
+  analogReadResolution(14);
 
+  EEPROM.begin();          // R4 butuh begin()
   loadFromEEPROM();
 
   // WiFi AP
@@ -98,13 +112,58 @@ void sendADCData(Stream &port) {
 
 // ==================== EEPROM ====================
 void loadFromEEPROM() {
-  // TODO: Load calibration, settings, accounts from EEPROM
-  // Format kalibrasi: *KoefZZeroHHigh#
-  // Format settings: *0.3T3#
+  uint16_t magic;
+  EEPROM.get(EE_MAGIC, magic);
+
+  if (magic != 0xA55A) {
+    // Belum pernah disimpan → pakai default lalu simpan
+    saveToEEPROM();
+    return;
+  }
+
+  EEPROM.get(EE_CAL_ZERO, cal_zero_adc);
+  EEPROM.get(EE_CAL_HIGH, cal_high_adc);
+  EEPROM.get(EE_NOISE, noise_tolerance);
+  EEPROM.get(EE_WAIT_TIME, wait_time_measure);
+
+  char buf[17];
+
+  EEPROM.get(EE_ACC1_ID, buf);
+  account1_id = String(buf);
+  EEPROM.get(EE_ACC1_PW, buf);
+  account1_pw = String(buf);
+
+  EEPROM.get(EE_ACC2_ID, buf);
+  account2_id = String(buf);
+  EEPROM.get(EE_ACC2_PW, buf);
+  account2_pw = String(buf);
+
+  Serial.println("EEPROM loaded");
 }
 
 void saveToEEPROM() {
-  // TODO: Save calibration, settings, accounts to EEPROM
+  uint16_t magic = 0xA55A;
+  EEPROM.put(EE_MAGIC, magic);
+
+  EEPROM.put(EE_CAL_ZERO, cal_zero_adc);
+  EEPROM.put(EE_CAL_HIGH, cal_high_adc);
+  EEPROM.put(EE_NOISE, noise_tolerance);
+  EEPROM.put(EE_WAIT_TIME, wait_time_measure);
+
+  char buf[17];
+
+  account1_id.toCharArray(buf, 16);
+  EEPROM.put(EE_ACC1_ID, buf);
+  account1_pw.toCharArray(buf, 16);
+  EEPROM.put(EE_ACC1_PW, buf);
+
+  account2_id.toCharArray(buf, 16);
+  EEPROM.put(EE_ACC2_ID, buf);
+  account2_pw.toCharArray(buf, 16);
+  EEPROM.put(EE_ACC2_PW, buf);
+
+  EEPROM.commit();   // Penting di R4
+  Serial.println("EEPROM saved");
 }
 
 // ==================== WEB / WEBSOCKET (TODO) ====================
@@ -114,13 +173,13 @@ void saveToEEPROM() {
 // - Login system
 // - Halaman Kalibrasi (Zero + High 10mm/m)
 // - Halaman Config (noise, wait time, ubah akun)
-// - Halaman Hasil
+// - Halaman Pengujian
 
 // ==================== HELPER ====================
 float calculateSideSlip(int adc) {
-  // TODO: Hitung mm/m berdasarkan kalibrasi
+  // Hitung mm/m berdasarkan koefisien
   // High = 10 mm/m
   if (cal_high_adc == cal_zero_adc) return 0;
   float koef = cal_high_adc - cal_zero_adc;
-  return ((adc - cal_zero_adc) / koef) * 10.0;
+  return ((adc - cal_zero_adc) / koef) * 10.0f;
 }
