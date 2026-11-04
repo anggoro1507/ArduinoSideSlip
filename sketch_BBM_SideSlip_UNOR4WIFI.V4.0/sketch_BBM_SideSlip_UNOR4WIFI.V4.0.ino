@@ -4,7 +4,7 @@
  *
  * Fitur:
  * - Sensor A5, ADC 14-bit dimapping ke 0-9999
- * - Serial protocol kompatibel SSP2000 (*XXXX# saat terima 'R')
+ * - Serial protocol kompatibel SSP2000 (*XXXX# saat terima 'R', kirim terus)
  * - WiFi AP + WebSocket + Web UI
  * - Login: ID1 (Kepala), ID2 (Penguji), sa (Admin hardcoded)
  * - EEPROM untuk kalibrasi, settings, akun
@@ -20,6 +20,7 @@
 #define ADC_MAX_14BIT       16383
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
+#define INTERVAL_MS         37
 
 // WiFi AP
 const char* AP_SSID         = "SideSlipBBM";
@@ -44,6 +45,10 @@ int wait_time_measure       = 3;      // detik
 // Filter
 float alpha                 = 0.8f;
 float sensorFilter          = 0;
+
+// Serial protocol state
+int rcv                     = 0;
+unsigned long per_37ms      = 0;
 
 // ==================== EEPROM MAP ====================
 // Alamat EEPROM (total ~100 byte)
@@ -89,16 +94,21 @@ void loop() {
 
 // ==================== SERIAL PROTOCOL (SSP2000) ====================
 void handleSerialProtocol() {
+  // Baca karakter baru (jika ada)
   if (Serial.available()) {
-    char c = Serial.read();
-    if (c == 'R') {
-      sendADCData(Serial);
-    }
+    rcv = Serial.read();
   }
   if (Serial1.available()) {
-    char c = Serial1.read();
-    if (c == 'R') {
+    rcv = Serial1.read();
+  }
+
+  // Jika terakhir terima 'R' (82), kirim terus setiap 37ms
+  if (rcv == 82) {
+    unsigned long currentTime = millis();
+    if (currentTime - per_37ms > INTERVAL_MS) {
+      sendADCData(Serial);
       sendADCData(Serial1);
+      per_37ms = currentTime;
     }
   }
 }
@@ -107,7 +117,7 @@ void sendADCData(Stream &port) {
   char buf[10];
   int value = (int)sensorFilter;
   sprintf(buf, "*%04d#", value);
-  port.println(buf);
+  port.println(buf);   // otomatis tambah \r\n
 }
 
 // ==================== EEPROM ====================
