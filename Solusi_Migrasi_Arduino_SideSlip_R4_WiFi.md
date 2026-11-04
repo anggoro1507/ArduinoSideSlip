@@ -39,9 +39,10 @@ Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4
 ### Protokol Serial SSP2000
 
 - Arduino **menunggu** karakter **'R'** dari software.
-- Setelah terima **'R'**, Arduino kirim data ADC dalam format: `*XXXX#`
+- Setelah terima **'R'**, Arduino kirim data ADC dalam format: `*XXXX#` terus-menerus setiap ~37 ms.
 - Contoh: `*0512#`, `*5000#`, `*9999#`
 - Data yang dikirim adalah nilai **setelah mapping** (0–9999) + filter.
+- Kirim karakter lain (bukan 'R') untuk berhenti.
 
 ## Sistem Login (Halaman Utama)
 
@@ -61,6 +62,19 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 - ID:sa tidak bisa diubah lewat UI dan tidak disimpan di EEPROM.
 - Halaman **Kalibrasi** dan **Config** hanya bisa diakses oleh ID:1 atau sa.
 - Setelah login, session disimpan di browser (localStorage / session).
+
+### Aturan ID & Password (Harus Ditampilkan Saat Kepala Ubah Akun)
+
+| Aturan | Keterangan |
+|--------|------------|
+| **Panjang maksimal** | **15 karakter** (ID dan Password) |
+| **Huruf & Angka** | Boleh (`a-z`, `A-Z`, `0-9`) |
+| **Simbol** | Boleh (`@ # $ % & * + - _ .`) |
+| **Spasi** | **Tidak disarankan** |
+| **Karakter kontrol** | **Tidak boleh** (`\0`, `\n`, `\r`, `\t`) |
+| **Non-ASCII / Emoji** | **Tidak disarankan** |
+
+> **Catatan:** Saat Kepala membuka halaman ubah akun, tampilkan info ini di UI supaya tidak salah input.
 
 ## Cara Pengukuran / Pengujian (Alur yang Benar)
 
@@ -144,6 +158,7 @@ Contoh dari `SideSlipSettings.txt`:
 ### Akun (disimpan di EEPROM)
 - ID:1 + Password:1 (Kepala)
 - ID:2 + Password:2 (Penguji)
+- Maksimal **15 karakter** per field
 
 ## Struktur Web UI (Mirip SSP2000)
 
@@ -184,7 +199,7 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 - Sensor reading + mapping 14-bit → 0–9999
 - Filter eksponensial
-- Serial protocol SSP2000 (Serial + Serial1)
+- Serial protocol SSP2000 (kirim terus setelah 'R')
 - Struktur login & variabel kalibrasi/settings
 - EEPROM load/save (magic `0xB2C0`)
 - WiFi AP: `SideSlipBBM` / `12345678`
@@ -198,7 +213,7 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 | 3 | **WebSocket** | Belum | Streaming data real-time + terima command |
 | 4 | **Login System** | Belum | Validasi ID/PW + kontrol akses |
 | 5 | **Halaman Kalibrasi** | Belum | Set Zero + High untuk hitung koefisien |
-| 6 | **Halaman Config** | Belum | Ubah noise tolerance, wait time, ubah akun |
+| 6 | **Halaman Config** | Belum | Ubah noise tolerance, wait time, ubah akun (tampilkan aturan 15 karakter) |
 | 7 | **Logika Pengujian** | Belum | Zero dinamis + catat deviasi terbesar (plus/minus) + deteksi stabil 3 detik |
 | 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai peak (bisa negatif) |
 | 9 | **Testing Dual Mode** | Belum | Uji Serial SSP2000 + WebSocket bersamaan |
@@ -212,5 +227,5 @@ File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
 
 ---
 
-**Status:** SSID WiFi dan magic bytes sudah disesuaikan dengan kode `.ino`.  
+**Status:** Aturan panjang ID/password sudah dicatat. Nanti ditampilkan di UI saat Kepala ubah akun.  
 Siap dilanjutkan ke implementasi.
