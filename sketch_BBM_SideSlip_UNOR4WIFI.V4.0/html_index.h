@@ -13,9 +13,7 @@ const char HTML_INDEX[] PROGMEM = R"rawliteral(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SideSlip - Login</title>
-  <style>
-    /* CSS akan di-inject dari web_common.h */
-  </style>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div class="container">
@@ -40,8 +38,6 @@ const char HTML_INDEX[] PROGMEM = R"rawliteral(
       const id = document.getElementById('id').value.trim();
       const pw = document.getElementById('pw').value;
 
-      // TODO: Kirim ke Arduino via WebSocket / fetch
-      // Sementara simpan di localStorage untuk testing UI
       if (id && pw) {
         localStorage.setItem('login_id', id);
         window.location.href = '/pengujian';
