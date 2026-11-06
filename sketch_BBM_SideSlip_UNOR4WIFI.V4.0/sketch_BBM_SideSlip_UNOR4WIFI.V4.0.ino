@@ -5,7 +5,7 @@
  * Fitur:
  * - Sensor A5, ADC 14-bit dimapping ke 0-9999
  * - Serial protocol kompatibel SSP2000 (*XXXX# saat terima 'R', kirim terus)
- * - WiFi AP + WebSocket + Web UI
+ * - WiFi AP + Web Server
  * - Login: ID1 (Kepala), ID2 (Penguji), sa (Admin hardcoded)
  * - EEPROM untuk kalibrasi, settings, akun
  * - Dual Serial (Serial + Serial1)
@@ -14,6 +14,7 @@
 #include <WiFiS3.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
+#include "web_server.h"
 
 // ==================== KONFIGURASI ====================
 #define SENSOR_PIN          A5
@@ -51,16 +52,15 @@ int rcv                     = 0;
 unsigned long per_37ms      = 0;
 
 // ==================== EEPROM MAP ====================
-// Alamat EEPROM (total ~100 byte)
-#define EE_MAGIC            0     // 2 byte magic number (0xB2C0 = valid)
-#define EE_CAL_ZERO         2     // 2 byte int
-#define EE_CAL_HIGH         4     // 2 byte int
-#define EE_NOISE            6     // 4 byte float
-#define EE_WAIT_TIME        10    // 2 byte int
-#define EE_ACC1_ID          12    // 16 byte string
-#define EE_ACC1_PW          28    // 16 byte string
-#define EE_ACC2_ID          44    // 16 byte string
-#define EE_ACC2_PW          60    // 16 byte string
+#define EE_MAGIC            0
+#define EE_CAL_ZERO         2
+#define EE_CAL_HIGH         4
+#define EE_NOISE            6
+#define EE_WAIT_TIME        10
+#define EE_ACC1_ID          12
+#define EE_ACC1_PW          28
+#define EE_ACC2_ID          44
+#define EE_ACC2_PW          60
 #define EE_END              76
 
 // ==================== SETUP ====================
@@ -70,12 +70,15 @@ void setup() {
 
   analogReadResolution(14);
 
-  EEPROM.begin();          // R4 butuh begin()
+  EEPROM.begin();
   loadFromEEPROM();
 
   // WiFi AP
   WiFi.beginAP(AP_SSID, AP_PASSWORD);
-  // TODO: Start Web Server + WebSocket
+  Serial.print("AP IP: ");
+  Serial.println(WiFi.localIP());
+
+  setupWebServer();
 }
 
 // ==================== LOOP ====================
@@ -88,13 +91,12 @@ void loop() {
   // Handle Serial protocol SSP2000
   handleSerialProtocol();
 
-  // TODO: Handle WebSocket
-  // TODO: Handle Web Server
+  // Handle Web Server
+  handleWebServer();
 }
 
 // ==================== SERIAL PROTOCOL (SSP2000) ====================
 void handleSerialProtocol() {
-  // Baca karakter baru (jika ada)
   if (Serial.available()) {
     rcv = Serial.read();
   }
@@ -102,7 +104,6 @@ void handleSerialProtocol() {
     rcv = Serial1.read();
   }
 
-  // Jika terakhir terima 'R' (82), kirim terus setiap 37ms
   if (rcv == 82) {
     unsigned long currentTime = millis();
     if (currentTime - per_37ms > INTERVAL_MS) {
@@ -117,7 +118,7 @@ void sendADCData(Stream &port) {
   char buf[10];
   int value = (int)sensorFilter;
   sprintf(buf, "*%04d#", value);
-  port.println(buf);   // otomatis tambah \r\n
+  port.println(buf);
 }
 
 // ==================== EEPROM ====================
@@ -126,7 +127,6 @@ void loadFromEEPROM() {
   EEPROM.get(EE_MAGIC, magic);
 
   if (magic != 0xB2C0) {
-    // Belum pernah disimpan → pakai default lalu simpan
     saveToEEPROM();
     return;
   }
@@ -172,23 +172,12 @@ void saveToEEPROM() {
   account2_pw.toCharArray(buf, 16);
   EEPROM.put(EE_ACC2_PW, buf);
 
-  EEPROM.commit();   // Penting di R4
+  EEPROM.commit();
   Serial.println("EEPROM saved");
 }
 
-// ==================== WEB / WEBSOCKET (TODO) ====================
-// TODO:
-// - Web Server dengan 4 halaman
-// - WebSocket untuk data real-time + command
-// - Login system
-// - Halaman Kalibrasi (Zero + High 10mm/m)
-// - Halaman Config (noise, wait time, ubah akun)
-// - Halaman Pengujian
-
 // ==================== HELPER ====================
 float calculateSideSlip(int adc) {
-  // Hitung mm/m berdasarkan koefisien
-  // High = 10 mm/m
   if (cal_high_adc == cal_zero_adc) return 0;
   float koef = cal_high_adc - cal_zero_adc;
   return ((adc - cal_zero_adc) / koef) * 10.0f;
