@@ -32,24 +32,11 @@ void handleWebServer() {
     path = request.substring(start + 1, end);
   }
 
-  client.println("HTTP/1.1 200 OK");
-  client.println("Content-Type: text/html");
-  client.println("Connection: close");
-  client.println();
+  // Hapus query string jika ada
+  int q = path.indexOf('?');
+  if (q > 0) path = path.substring(0, q);
 
-  if (path == "/" || path == "/index.html") {
-    client.print(HTML_INDEX);
-  }
-  else if (path == "/pengujian") {
-    client.print(HTML_PENGUJIAN);
-  }
-  else if (path == "/kalibrasi") {
-    client.print(HTML_KALIBRASI);
-  }
-  else if (path == "/config") {
-    client.print(HTML_CONFIG);
-  }
-  else if (path == "/style.css") {
+  if (path == "/style.css") {
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/css");
     client.println("Connection: close");
@@ -57,7 +44,26 @@ void handleWebServer() {
     client.print(CSS_COMMON);
   }
   else {
-    client.print("<h1>404 Not Found</h1>");
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println("Connection: close");
+    client.println();
+
+    if (path == "/" || path == "/index.html") {
+      client.print(HTML_INDEX);
+    }
+    else if (path == "/pengujian") {
+      client.print(HTML_PENGUJIAN);
+    }
+    else if (path == "/kalibrasi") {
+      client.print(HTML_KALIBRASI);
+    }
+    else if (path == "/config") {
+      client.print(HTML_CONFIG);
+    }
+    else {
+      client.print("<h1>404 Not Found</h1><a href='/'>Kembali</a>");
+    }
   }
 
   delay(1);
