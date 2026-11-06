@@ -62,6 +62,8 @@ Login wajib di halaman utama sebelum mengakses fitur lain.
 - ID:sa tidak bisa diubah lewat UI dan tidak disimpan di EEPROM.
 - Halaman **Kalibrasi** dan **Config** hanya bisa diakses oleh ID:1 atau sa.
 - Setelah login, session disimpan di browser (localStorage / session).
+- **Multi-login**: ID sama boleh login di banyak perangkat.
+- **Timeout**: Auto-logout setelah idle 10 menit (rencana).
 
 ### Aturan ID & Password (Harus Ditampilkan Saat Kepala Ubah Akun)
 
@@ -125,7 +127,7 @@ Display       = -1.5 mm/m (contoh)
 [Sensors A5] → [Arduino Uno R4 WiFi]
                     ├── USB Serial (Serial) → SSP2000 (protokol lama)
                     ├── Serial1 (cadangan)
-                    └── WiFi AP + WebSocket + Web Server → Browser
+                    └── WiFi AP + Web Server → Browser
                           ├── /            → Halaman Utama (login)
                           ├── /pengujian   → Pengujian real-time (semua akun)
                           ├── /kalibrasi   → Kalibrasi (hanya ID1 / sa)
@@ -169,7 +171,7 @@ Contoh dari `SideSlipSettings.txt`:
 | **Kalibrasi** | `/kalibrasi` | Set Zero + High (10 mm/m) untuk hitung koefisien, simpan ke EEPROM | ID:1 / sa |
 | **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
 
-### Komunikasi WebSocket (JSON)
+### Komunikasi WebSocket (JSON) — Belum Diimplementasi
 
 **Data dari Arduino → Browser:**
 ```json
@@ -193,39 +195,43 @@ Contoh dari `SideSlipSettings.txt`:
 { "cmd": "change_account", "target": "2", "new_id": "penguji", "new_pw": "uji456" }
 ```
 
-## Yang Sudah Ada di Kerangka Kode
+## Yang Sudah Ada di Kode
 
-File: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino`
+Folder: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/`
 
-- Sensor reading + mapping 14-bit → 0–9999
-- Filter eksponensial
-- Serial protocol SSP2000 (kirim terus setelah 'R')
-- Struktur login & variabel kalibrasi/settings
-- EEPROM load/save (magic `0xB2C0`)
-- WiFi AP: `SideSlipBBM` / `12345678`
+| File | Status |
+|------|--------|
+| `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino` | Sensor + Serial + EEPROM + panggil web server |
+| `web_server.cpp` / `.h` | Web server port 80, routing 4 halaman + CSS |
+| `html_index.h` | Halaman login |
+| `html_pengujian.h` | Halaman pengujian (tampilan dasar) |
+| `html_kalibrasi.h` | Halaman kalibrasi (tombol dasar) |
+| `html_config.h` | Halaman config (settings + ubah akun) |
+| `web_common.h` | CSS bersama |
 
-## Yang Masih Kurang Sebelum Coding Lengkap
+## Yang Masih Kurang
 
 | No | Bagian | Status | Keterangan |
 |----|--------|--------|------------|
-| 1 | **EEPROM** | Sudah | Load/save kalibrasi, settings, akun ID1 & ID2 |
-| 2 | **Web Server** | Belum | 4 halaman HTML |
+| 1 | **EEPROM** | Sudah | Load/save kalibrasi, settings, akun |
+| 2 | **Web Server** | **Sudah** | 4 halaman HTML + CSS + routing |
 | 3 | **WebSocket** | Belum | Streaming data real-time + terima command |
-| 4 | **Login System** | Belum | Validasi ID/PW + kontrol akses |
-| 5 | **Halaman Kalibrasi** | Belum | Set Zero + High untuk hitung koefisien |
-| 6 | **Halaman Config** | Belum | Ubah noise tolerance, wait time, ubah akun (tampilkan aturan 15 karakter) |
-| 7 | **Logika Pengujian** | Belum | Zero dinamis + catat deviasi terbesar (plus/minus) + deteksi stabil 3 detik |
-| 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai peak (bisa negatif) |
+| 4 | **Login System** | Belum | Validasi ID/PW ke Arduino + timeout |
+| 5 | **Halaman Kalibrasi** | Sebagian | UI ada, logika belum terhubung |
+| 6 | **Halaman Config** | Sebagian | UI ada, logika belum terhubung |
+| 7 | **Logika Pengujian** | Belum | Zero dinamis + peak plus/minus + stabil 3 detik |
+| 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai peak |
 | 9 | **Testing Dual Mode** | Belum | Uji Serial SSP2000 + WebSocket bersamaan |
 
 ## Langkah Kerja Selanjutnya
 
-1. Buat **WebSocket** + halaman utama dengan login.
-2. Tambah logika **pengujian** (zero dinamis + peak plus/minus + stabil).
-3. Tambah halaman **Kalibrasi** dan **Config**.
-4. Testing dual mode (Serial + WebSocket).
+1. **WebSocket** (streaming data real-time).
+2. Login system (validasi ke Arduino).
+3. Logika pengujian (zero dinamis + peak).
+4. Hubungkan tombol Kalibrasi & Config ke Arduino.
+5. Testing dual mode.
 
 ---
 
-**Status:** Aturan panjang ID/password sudah dicatat. Nanti ditampilkan di UI saat Kepala ubah akun.  
-Siap dilanjutkan ke implementasi.
+**Status:** Web Server sudah selesai (halaman + routing + CSS).  
+Siap lanjut ke **WebSocket**.
