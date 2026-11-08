@@ -172,7 +172,6 @@ void saveToEEPROM() {
   account2_pw.toCharArray(buf, 16);
   EEPROM.put(EE_ACC2_PW, buf);
 
-  EEPROM.commit();
   Serial.println("EEPROM saved");
 }
 
