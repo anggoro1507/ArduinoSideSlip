@@ -1,7 +1,8 @@
 /*
  * html_pengujian.h
  * Halaman Pengujian - style putih/biru
- * Angka di atas (bukan center vertikal)
+ * Angka di atas
+ * Menu tidak ketutup di smartphone
  * Responsive: kecil di smartphone, besar di PC
  * Axle di-lock di 1
  */
@@ -27,6 +28,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       flex-direction: column;
       align-items: center;
       padding: 16px;
+      padding-bottom: 80px;
     }
     .value-box {
       text-align: center;
@@ -67,25 +69,38 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
     .nav {
-      margin-top: auto;
-      padding-bottom: 16px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #f0f2f5;
+      padding: 12px 16px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
       display: flex;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
     }
     .nav a {
       color: #fff;
       text-decoration: none;
       background: #1a73e8;
-      padding: 14px 22px;
+      padding: 12px 18px;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 15px;
     }
     .nav a:hover { background: #1557b0; }
 
     /* PC / layar besar */
     @media (min-width: 800px) {
+      body { padding-bottom: 16px; }
+      .nav {
+        position: static;
+        margin-top: auto;
+        box-shadow: none;
+        padding-bottom: 16px;
+      }
       .value-box {
         max-width: 480px;
         padding: 32px;
