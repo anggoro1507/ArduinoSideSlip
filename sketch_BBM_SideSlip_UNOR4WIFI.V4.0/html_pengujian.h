@@ -1,7 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page - English
- * WebSocket realtime
+ * Measurement page - HTTP polling (lebih stabil di R4)
  * Axle locked at 1
  */
 
@@ -129,7 +128,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <div class="value-box">
     <div id="value" class="zero">0.0</div>
     <div class="unit">mm / m</div>
-    <div class="status" id="wsStatus">Connecting...</div>
+    <div class="status" id="pollStatus">Polling...</div>
   </div>
 
   <div class="axle" id="axle">1</div>
@@ -156,32 +155,32 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       document.getElementById('axle').textContent = '1';
     }
 
-    const ws = new WebSocket('ws://' + location.hostname + ':81');
-    const statusEl = document.getElementById('wsStatus');
+    const statusEl = document.getElementById('pollStatus');
+    let errorCount = 0;
 
-    ws.onopen = function() {
-      statusEl.textContent = 'Connected';
-      statusEl.style.color = '#0a0';
-    };
+    function pollData() {
+      fetch('/data')
+        .then(r => r.json())
+        .then(data => {
+          if (typeof data.value === 'number') {
+            updateValue(data.value);
+          }
+          statusEl.textContent = 'Live';
+          statusEl.style.color = '#0a0';
+          errorCount = 0;
+        })
+        .catch(() => {
+          errorCount++;
+          if (errorCount > 3) {
+            statusEl.textContent = 'No data';
+            statusEl.style.color = '#c00';
+          }
+        });
+    }
 
-    ws.onclose = function() {
-      statusEl.textContent = 'Disconnected';
-      statusEl.style.color = '#c00';
-    };
-
-    ws.onerror = function() {
-      statusEl.textContent = 'Error';
-      statusEl.style.color = '#c00';
-    };
-
-    ws.onmessage = function(evt) {
-      try {
-        const data = JSON.parse(evt.data);
-        if (typeof data.value === 'number') {
-          updateValue(data.value);
-        }
-      } catch(e) {}
-    };
+    // Poll setiap 200ms
+    setInterval(pollData, 200);
+    pollData();
   </script>
 </body>
 </html>
