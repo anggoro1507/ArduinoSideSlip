@@ -1,6 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
- * Rate limited measurement (50ms)
+ * Rate limited measurement (37ms)
  */
 
 #include <WiFiS3.h>
@@ -13,7 +13,7 @@
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
 #define INTERVAL_MS         37
-#define MEASURE_INTERVAL_MS 50
+#define MEASURE_INTERVAL_MS 37
 
 const char* AP_SSID         = "SideSlipBBM";
 const char* AP_PASSWORD     = "12345678";
@@ -87,7 +87,6 @@ void setup() {
 }
 
 void loop() {
-  // Read and filter ADC (fast)
   int raw14 = analogRead(SENSOR_PIN);
   int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
   sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
@@ -95,7 +94,6 @@ void loop() {
   handleSerialProtocol();
   handleWebServer();
 
-  // Rate limited measurement (50ms)
   unsigned long now = millis();
   if (now - lastMeasure >= MEASURE_INTERVAL_MS) {
     Int_ADC = (int)sensorFilter;
