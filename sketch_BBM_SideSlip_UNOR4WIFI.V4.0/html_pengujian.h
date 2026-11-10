@@ -2,6 +2,7 @@
  * html_pengujian.h
  * Halaman Pengujian - mengikuti tampilan software SSP2000
  * Tidak menampilkan ADC mentah
+ * Warna: Merah jika |nilai| > 5 mm/m, Hijau jika normal, Abu jika nol
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -56,8 +57,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       display: inline-block;
       min-width: 180px;
     }
-    #value.positive { background: #0a0; }
-    #value.negative { background: #c00; }
+    #value.ok { background: #0a0; }      /* hijau: dalam batas */
+    #value.over { background: #c00; }    /* merah: |nilai| > 5 */
     #value.zero { background: #555; }
     .unit {
       font-size: 20px;
@@ -144,14 +145,22 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    // Contoh update nilai (nanti diganti WebSocket)
+    // Update nilai + warna
+    // Merah jika |nilai| > 5 mm/m
+    // Hijau jika dalam batas
+    // Abu jika nol
     function updateValue(val) {
       const el = document.getElementById('value');
       el.textContent = val.toFixed(1);
       el.className = '';
-      if (val > 0.05) el.classList.add('positive');
-      else if (val < -0.05) el.classList.add('negative');
-      else el.classList.add('zero');
+      const abs = Math.abs(val);
+      if (abs < 0.05) {
+        el.classList.add('zero');
+      } else if (abs > 5.0) {
+        el.classList.add('over');
+      } else {
+        el.classList.add('ok');
+      }
     }
     // Demo
     updateValue(0);
