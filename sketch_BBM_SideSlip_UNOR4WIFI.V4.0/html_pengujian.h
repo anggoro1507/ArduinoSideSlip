@@ -1,7 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page - show zero status
- * Axle locked at 1
+ * Measurement page - fixed status logic
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -176,16 +175,13 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     }
 
     let errorCount = 0;
+    let lastResult = false;
 
     function pollData() {
       fetch('/data')
         .then(r => r.json())
         .then(data => {
-          if (data.result && typeof data.peak === 'number') {
-            updateValue(data.peak);
-          } else if (typeof data.value === 'number') {
-            updateValue(data.value);
-          }
+          updateValue(data.value || 0);
           updateStatus(data.zeroed, data.result);
           errorCount = 0;
         })
