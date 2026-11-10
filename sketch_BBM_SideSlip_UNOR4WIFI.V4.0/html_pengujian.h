@@ -1,8 +1,8 @@
 /*
  * html_pengujian.h
- * Halaman Pengujian - tampilan sederhana, responsive untuk smartphone
- * Tanpa background gambar
- * Warna: Merah jika |nilai| > 5 mm/m, Hijau jika normal, Abu jika nol
+ * Halaman Pengujian - style seperti login (putih/biru)
+ * Tanpa status box
+ * Responsive untuk smartphone
  * Axle di-lock di 1
  */
 
@@ -19,98 +19,72 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #000;
-      color: #fff;
       font-family: Arial, Helvetica, sans-serif;
+      background: #f0f2f5;
+      color: #333;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 12px;
-    }
-    .status-box {
-      align-self: flex-start;
-      border: 1px solid #444;
-      padding: 8px;
-      background: #111;
-      font-size: 13px;
-      margin-bottom: 16px;
-      width: 100%;
-      max-width: 280px;
-    }
-    .status-box select, .status-box button {
-      width: 100%;
-      margin: 4px 0;
-      padding: 6px;
-    }
-    .indicator {
-      height: 14px;
-      background: #00f;
-      margin-top: 4px;
+      padding: 16px;
     }
     .value-box {
       text-align: center;
-      margin: 20px 0;
+      margin: 24px 0;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 320px;
     }
     #value {
-      font-size: 64px;
+      font-size: 56px;
       font-weight: bold;
-      padding: 12px 24px;
-      background: #444;
+      padding: 8px 16px;
+      background: #555;
+      color: #fff;
       display: inline-block;
-      min-width: 160px;
-      border-radius: 4px;
+      min-width: 140px;
+      border-radius: 6px;
     }
     #value.ok { background: #0a0; }
     #value.over { background: #c00; }
     #value.zero { background: #555; }
     .unit {
-      font-size: 18px;
-      margin-top: 6px;
-      color: #aaa;
+      font-size: 16px;
+      margin-top: 8px;
+      color: #666;
     }
     .axle {
-      background: #333;
-      border: 1px solid #666;
-      padding: 10px 24px;
-      font-size: 32px;
-      min-width: 70px;
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 12px 28px;
+      font-size: 28px;
       text-align: center;
-      margin: 24px 0;
-      border-radius: 4px;
+      margin: 16px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
     .nav {
-      margin-top: auto;
-      padding: 16px 0;
+      margin-top: 24px;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
     }
     .nav a {
       color: #fff;
       text-decoration: none;
-      border: 1px solid #555;
-      padding: 10px 16px;
-      background: #222;
-      border-radius: 4px;
-      font-size: 14px;
+      background: #1a73e8;
+      padding: 12px 18px;
+      border-radius: 6px;
+      font-size: 15px;
     }
-    @media (min-width: 600px) {
-      #value { font-size: 80px; }
-      .status-box { position: absolute; top: 12px; left: 12px; }
-      .value-box { margin-top: 60px; }
-    }
+    .nav a:hover { background: #1557b0; }
   </style>
 </head>
 <body>
-  <div class="status-box">
-    <div>Status</div>
-    <select><option>WiFi AP</option></select>
-    <button>DISCONNECT</button>
-    <div class="indicator"></div>
-  </div>
-
   <div class="value-box">
     <div id="value" class="zero">0.0</div>
     <div class="unit">mm / m</div>
