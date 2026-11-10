@@ -1,13 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
  * Arduino Uno R4 WiFi - Side Slip Tester
- *
- * Fitur:
- * - Sensor A5, ADC 14-bit dimapping ke 0-9999
- * - Serial protocol SSP2000
- * - WiFi AP + Web Server + HTTP polling
- * - Logika pengukuran: zero dinamis, peak, stabil
- * - Simpan kalibrasi & settings ke EEPROM
  */
 
 #include <WiFiS3.h>
@@ -15,7 +8,6 @@
 #include <ArduinoJson.h>
 #include "web_server.h"
 
-// ==================== KONFIGURASI ====================
 #define SENSOR_PIN          A5
 #define ADC_MAX_14BIT       16383
 #define ADC_MAX_4DIGIT      9999
@@ -44,7 +36,7 @@ float sensorFilter          = 0;
 int rcv                     = 0;
 unsigned long per_37ms      = 0;
 
-// ==================== MEASUREMENT STATE ====================
+// Measurement state
 int zero_adc                = 0;
 int high_adc                = 0;
 int low_adc                 = 9999;
@@ -52,24 +44,23 @@ float peak_value            = 0;
 bool zero_position_flag     = true;
 bool stable_check_flag      = false;
 bool show_result_flag       = false;
+bool need_initial_zero      = true;
 unsigned long t0            = 0;
 unsigned long t1            = 0;
 unsigned long t2            = 0;
 int last_adc                = 0;
 
-// ==================== EEPROM MAP (R4: int=4 byte) ====================
-#define EE_MAGIC            0   // uint16_t = 2 byte
-#define EE_CAL_ZERO         4   // int = 4 byte
-#define EE_CAL_HIGH         8   // int = 4 byte
-#define EE_NOISE            12  // float = 4 byte
-#define EE_WAIT_TIME        16  // int = 4 byte
-#define EE_ACC1_ID          20  // char[16]
-#define EE_ACC1_PW          36  // char[16]
-#define EE_ACC2_ID          52  // char[16]
-#define EE_ACC2_PW          68  // char[16]
+#define EE_MAGIC            0
+#define EE_CAL_ZERO         4
+#define EE_CAL_HIGH         8
+#define EE_NOISE            12
+#define EE_WAIT_TIME        16
+#define EE_ACC1_ID          20
+#define EE_ACC1_PW          36
+#define EE_ACC2_ID          52
+#define EE_ACC2_PW          68
 #define EE_END              84
 
-// ==================== SETUP ====================
 void setup() {
   Serial.begin(SERIAL_BAUD);
   Serial1.begin(SERIAL_BAUD);
@@ -84,18 +75,26 @@ void setup() {
   setupWebServer();
 }
 
-// ==================== LOOP ====================
 void loop() {
   int raw14 = analogRead(SENSOR_PIN);
   int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
   sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
+
+  // Initial zero on first stable reading
+  if (need_initial_zero) {
+    zero_adc = (int)sensorFilter;
+    high_adc = zero_adc;
+    low_adc = zero_adc;
+    need_initial_zero = false;
+    Serial.print("Initial zero: ");
+    Serial.println(zero_adc);
+  }
 
   handleSerialProtocol();
   handleWebServer();
   updateMeasurement((int)sensorFilter);
 }
 
-// ==================== MEASUREMENT LOGIC ====================
 void updateMeasurement(int data) {
   float noiseThreshold = noise_tolerance * 9999.0f / 100.0f;
 
@@ -107,6 +106,7 @@ void updateMeasurement(int data) {
     }
     zero_position_flag = false;
     stable_check_flag = false;
+    show_result_flag = false;
     t0 = millis();
   }
 
@@ -138,6 +138,7 @@ void updateMeasurement(int data) {
       peak_value = calculateSideSlip(peakAdc);
       show_result_flag = true;
 
+      // Auto-zero after stable
       zero_adc = data;
       high_adc = data;
       low_adc = data;
@@ -159,9 +160,10 @@ void resetMeasurement() {
   zero_position_flag = true;
   stable_check_flag = false;
   show_result_flag = false;
+  Serial.print("Manual zero: ");
+  Serial.println(zero_adc);
 }
 
-// ==================== SERIAL PROTOCOL ====================
 void handleSerialProtocol() {
   if (Serial.available()) rcv = Serial.read();
   if (Serial1.available()) rcv = Serial1.read();
@@ -182,7 +184,6 @@ void sendADCData(Stream &port) {
   port.println(buf);
 }
 
-// ==================== EEPROM ====================
 void loadFromEEPROM() {
   uint16_t magic;
   EEPROM.get(EE_MAGIC, magic);
