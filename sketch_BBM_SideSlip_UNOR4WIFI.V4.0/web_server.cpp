@@ -20,6 +20,7 @@ extern float noise_tolerance;
 extern int wait_time_measure;
 extern float peak_value;
 extern bool show_result_flag;
+extern bool zero_position_flag;
 
 float calculateSideSlip(int adc);
 void saveToEEPROM();
@@ -53,11 +54,12 @@ void handleWebServer() {
 
   if (path == "/data") {
     float val = calculateSideSlip((int)sensorFilter);
-    StaticJsonDocument<128> doc;
+    StaticJsonDocument<160> doc;
     doc["value"] = val;
     doc["adc"] = (int)sensorFilter;
     doc["peak"] = peak_value;
     doc["result"] = show_result_flag;
+    doc["zeroed"] = zero_position_flag;
 
     String json;
     serializeJson(doc, json);
