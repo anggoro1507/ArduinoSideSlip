@@ -1,6 +1,6 @@
 /*
  * web_server.cpp
- * Web Server + endpoint /data, /cal/save, /cal/get, /settings/save
+ * Send ready-to-display values from Arduino
  */
 
 #include "web_server.h"
@@ -13,18 +13,23 @@
 
 WiFiServer server(80);
 
-extern float sensorFilter;
+extern int Int_ADC;
 extern int cal_zero_adc;
 extern int cal_high_adc;
+extern float Koef_ADC;
 extern float noise_tolerance;
 extern int wait_time_measure;
-extern float peak_value;
-extern bool show_result_flag;
-extern bool zero_position_flag;
+extern float Value_result;
+extern float Cal_Real_Zero;
+extern float Cal_Max_Real_Value;
+extern bool Show_Result_Flag;
+extern bool Zero_Display_Flag;
+extern bool Zero_Potition_Flag;
+extern bool Calibration_Flag;
 
-float calculateSideSlip(int adc);
 void saveToEEPROM();
 void resetMeasurement();
+void setCalibrationMode(bool on);
 
 void setupWebServer() {
   server.begin();
@@ -53,13 +58,31 @@ void handleWebServer() {
   }
 
   if (path == "/data") {
-    float val = calculateSideSlip((int)sensorFilter);
-    StaticJsonDocument<160> doc;
-    doc["value"] = val;
-    doc["adc"] = (int)sensorFilter;
-    doc["peak"] = peak_value;
-    doc["result"] = show_result_flag;
-    doc["zeroed"] = zero_position_flag;
+    // Calculate display value based on mode
+    float displayValue = 0;
+    if (Calibration_Flag) {
+      displayValue = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10.0f;
+      if (abs(displayValue) > abs(Cal_Max_Real_Value)) {
+        Cal_Max_Real_Value = displayValue;
+      }
+    } else {
+      if (Show_Result_Flag) {
+        displayValue = Value_result;
+      } else if (Zero_Display_Flag) {
+        displayValue = 0;
+        Zero_Display_Flag = false;
+      } else {
+        displayValue = 0;
+      }
+    }
+
+    StaticJsonDocument<192> doc;
+    doc["adc"] = Int_ADC;
+    doc["value"] = displayValue;
+    doc["max"] = Cal_Max_Real_Value;
+    doc["result"] = Show_Result_Flag;
+    doc["zeroed"] = Zero_Potition_Flag;
+    doc["cal_mode"] = Calibration_Flag;
 
     String json;
     serializeJson(doc, json);
@@ -75,6 +98,7 @@ void handleWebServer() {
     StaticJsonDocument<64> doc;
     doc["zero"] = cal_zero_adc;
     doc["high"] = cal_high_adc;
+    doc["koef"] = Koef_ADC;
 
     String json;
     serializeJson(doc, json);
@@ -93,8 +117,6 @@ void handleWebServer() {
       int amp = query.indexOf('&', h);
       cal_high_adc = query.substring(h + 5, amp > 0 ? amp : query.length()).toInt();
       saveToEEPROM();
-      Serial.print("Cal saved: zero="); Serial.print(cal_zero_adc);
-      Serial.print(" high="); Serial.println(cal_high_adc);
       client.println("HTTP/1.1 200 OK");
       client.println("Content-Type: text/plain");
       client.println("Connection: close");
@@ -105,6 +127,17 @@ void handleWebServer() {
       client.println("Connection: close");
       client.println();
     }
+  }
+  else if (path == "/cal/mode") {
+    int m = query.indexOf("on=");
+    if (m >= 0) {
+      setCalibrationMode(query.substring(m + 3).toInt() == 1);
+    }
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/plain");
+    client.println("Connection: close");
+    client.println();
+    client.print("OK");
   }
   else if (path == "/settings/save") {
     int n = query.indexOf("noise=");
@@ -150,9 +183,11 @@ void handleWebServer() {
       client.print(HTML_INDEX);
     }
     else if (path == "/pengujian") {
+      setCalibrationMode(false);
       client.print(HTML_PENGUJIAN);
     }
     else if (path == "/kalibrasi") {
+      setCalibrationMode(true);
       client.print(HTML_KALIBRASI);
     }
     else if (path == "/config") {
