@@ -1,6 +1,6 @@
 /*
  * web_server.cpp
- * Fixed login parsing
+ * Fixed URL decode for login
  */
 
 #include "web_server.h"
@@ -38,13 +38,29 @@ void saveToEEPROM();
 void resetMeasurement();
 void setCalibrationMode(bool on);
 
+String urlDecode(String str) {
+  String decoded = "";
+  for (int i = 0; i < str.length(); i++) {
+    if (str[i] == '%' && i + 2 < str.length()) {
+      char hex[3] = {str[i+1], str[i+2], 0};
+      decoded += (char)strtol(hex, NULL, 16);
+      i += 2;
+    } else if (str[i] == '+') {
+      decoded += ' ';
+    } else {
+      decoded += str[i];
+    }
+  }
+  return decoded;
+}
+
 String getParam(String query, String key) {
   int start = query.indexOf(key + "=");
   if (start < 0) return "";
   start += key.length() + 1;
   int end = query.indexOf('&', start);
   if (end < 0) end = query.length();
-  return query.substring(start, end);
+  return urlDecode(query.substring(start, end));
 }
 
 void setupWebServer() {
@@ -116,7 +132,6 @@ void handleWebServer() {
     
     Serial.print("Login: id="); Serial.print(id);
     Serial.print(" pw="); Serial.println(pw);
-    Serial.print("Acc1: "); Serial.print(account1_id); Serial.print("/"); Serial.println(account1_pw);
     
     if (id == ADMIN_ID && pw == ADMIN_PW) {
       role = "admin";
