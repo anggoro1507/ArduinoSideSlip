@@ -1,6 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page - HTTP polling (lebih stabil di R4)
+ * Measurement page - HTTP polling, show peak result
  * Axle locked at 1
  */
 
@@ -157,15 +157,26 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
 
     const statusEl = document.getElementById('pollStatus');
     let errorCount = 0;
+    let lastResult = false;
 
     function pollData() {
       fetch('/data')
         .then(r => r.json())
         .then(data => {
-          if (typeof data.value === 'number') {
+          // Show peak if result available, else current value
+          if (data.result && typeof data.peak === 'number') {
+            updateValue(data.peak);
+            if (!lastResult) {
+              statusEl.textContent = 'Result';
+              lastResult = true;
+            }
+          } else if (typeof data.value === 'number') {
             updateValue(data.value);
+            if (lastResult) {
+              statusEl.textContent = 'Live';
+              lastResult = false;
+            }
           }
-          statusEl.textContent = 'Live';
           statusEl.style.color = '#0a0';
           errorCount = 0;
         })
@@ -178,7 +189,6 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
         });
     }
 
-    // Poll setiap 200ms
     setInterval(pollData, 200);
     pollData();
   </script>
