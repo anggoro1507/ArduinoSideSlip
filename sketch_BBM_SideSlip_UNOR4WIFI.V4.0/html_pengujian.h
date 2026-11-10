@@ -1,8 +1,7 @@
 /*
  * html_pengujian.h
- * Halaman Pengujian - style seperti login (putih/biru)
- * Tanpa status box
- * Responsive untuk smartphone
+ * Halaman Pengujian - style putih/biru
+ * Responsive: kecil di smartphone, besar di PC
  * Axle di-lock di 1
  */
 
@@ -26,27 +25,27 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       padding: 16px;
     }
     .value-box {
       text-align: center;
-      margin: 24px 0;
       background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       width: 100%;
       max-width: 320px;
     }
     #value {
       font-size: 56px;
       font-weight: bold;
-      padding: 8px 16px;
+      padding: 10px 20px;
       background: #555;
       color: #fff;
       display: inline-block;
-      min-width: 140px;
-      border-radius: 6px;
+      min-width: 150px;
+      border-radius: 8px;
     }
     #value.ok { background: #0a0; }
     #value.over { background: #c00; }
@@ -59,17 +58,16 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     .axle {
       background: #fff;
       border: 1px solid #ddd;
-      padding: 12px 28px;
+      padding: 14px 32px;
       font-size: 28px;
       text-align: center;
-      margin: 16px 0;
-      border-radius: 8px;
+      margin: 20px 0;
+      border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
     .nav {
-      margin-top: 24px;
       display: flex;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -77,11 +75,33 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       color: #fff;
       text-decoration: none;
       background: #1a73e8;
-      padding: 12px 18px;
-      border-radius: 6px;
-      font-size: 15px;
+      padding: 14px 22px;
+      border-radius: 8px;
+      font-size: 16px;
     }
     .nav a:hover { background: #1557b0; }
+
+    /* PC / layar besar */
+    @media (min-width: 800px) {
+      .value-box {
+        max-width: 480px;
+        padding: 40px;
+      }
+      #value {
+        font-size: 96px;
+        min-width: 240px;
+        padding: 16px 32px;
+      }
+      .unit { font-size: 22px; }
+      .axle {
+        font-size: 42px;
+        padding: 18px 48px;
+      }
+      .nav a {
+        font-size: 18px;
+        padding: 16px 28px;
+      }
+    }
   </style>
 </head>
 <body>
