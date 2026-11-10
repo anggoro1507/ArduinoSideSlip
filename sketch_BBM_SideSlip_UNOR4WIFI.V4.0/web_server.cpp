@@ -1,6 +1,5 @@
 /*
  * web_server.cpp
- * Send ready-to-display values from Arduino
  */
 
 #include "web_server.h"
@@ -58,7 +57,6 @@ void handleWebServer() {
   }
 
   if (path == "/data") {
-    // Calculate display value based on mode
     float displayValue = 0;
     if (Calibration_Flag) {
       displayValue = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10.0f;
@@ -99,6 +97,20 @@ void handleWebServer() {
     doc["zero"] = cal_zero_adc;
     doc["high"] = cal_high_adc;
     doc["koef"] = Koef_ADC;
+
+    String json;
+    serializeJson(doc, json);
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println();
+    client.print(json);
+  }
+  else if (path == "/settings/get") {
+    StaticJsonDocument<64> doc;
+    doc["noise"] = noise_tolerance;
+    doc["wait"] = wait_time_measure;
 
     String json;
     serializeJson(doc, json);
