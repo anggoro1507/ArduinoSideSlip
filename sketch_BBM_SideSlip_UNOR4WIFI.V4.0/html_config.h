@@ -1,6 +1,6 @@
 /*
  * html_config.h
- * Config page with account change
+ * Config page - role check
  */
 
 #ifndef HTML_CONFIG_H
@@ -142,6 +142,20 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
+    // Check role first
+    (function() {
+      const session = localStorage.getItem('session');
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+      const data = JSON.parse(session);
+      if (data.role !== 'supervisor' && data.role !== 'admin') {
+        window.location.href = '/pengujian';
+        return;
+      }
+    })();
+
     fetch('/settings/get').then(r => r.json()).then(d => {
       if (d.noise !== undefined) document.getElementById('noise').value = d.noise;
       if (d.wait !== undefined) document.getElementById('wait').value = d.wait;
