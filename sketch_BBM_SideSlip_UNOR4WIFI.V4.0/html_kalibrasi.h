@@ -1,6 +1,6 @@
 /*
  * html_kalibrasi.h
- * Display values from Arduino (no local calculation)
+ * Calibration page - show ADC immediately
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -167,7 +167,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     </div>
     <div class="cal-row">
       <span>ADC Data</span>
-      <span id="adc">-</span>
+      <span id="adc">0</span>
     </div>
     <div class="cal-row">
       <span>Value</span>
