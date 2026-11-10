@@ -1,6 +1,6 @@
 /*
  * html_config.h
- * Config page - English
+ * Config page - English, connected to Arduino
  */
 
 #ifndef HTML_CONFIG_H
@@ -41,9 +41,7 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
       margin-bottom: 16px;
       text-align: center;
     }
-    .form-group {
-      margin-bottom: 14px;
-    }
+    .form-group { margin-bottom: 14px; }
     label {
       display: block;
       font-size: 14px;
@@ -73,11 +71,6 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
       font-size: 12px;
       color: #888;
       margin-bottom: 10px;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid #eee;
-      margin: 16px 0;
     }
     .nav {
       position: fixed;
@@ -116,7 +109,7 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
       <label>Wait Time (seconds)</label>
       <input type="text" id="wait" value="3">
     </div>
-    <button type="button">Save Settings</button>
+    <button type="button" id="btnSaveSettings">Save Settings</button>
   </div>
 
   <div class="card">
@@ -137,12 +130,26 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
       <label>New Password</label>
       <input type="password" id="newpw" maxlength="15">
     </div>
-    <button type="button">Save Account</button>
+    <button type="button" id="btnSaveAccount">Save Account</button>
   </div>
 
   <div class="nav">
     <a href="/pengujian">Back to Measurement</a>
   </div>
+
+  <script>
+    document.getElementById('btnSaveSettings').addEventListener('click', function() {
+      const noise = document.getElementById('noise').value;
+      const wait = document.getElementById('wait').value;
+      fetch('/settings/save?noise=' + noise + '&wait=' + wait)
+        .then(r => r.text())
+        .then(t => {
+          if (t === 'OK') alert('Settings saved');
+          else alert('Failed');
+        })
+        .catch(() => alert('Error'));
+    });
+  </script>
 </body>
 </html>
 )rawliteral";
