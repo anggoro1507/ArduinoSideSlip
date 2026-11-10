@@ -1,5 +1,6 @@
 /*
  * web_server.cpp
+ * Login, account, session endpoints
  */
 
 #include "web_server.h"
@@ -25,6 +26,13 @@ extern bool Show_Result_Flag;
 extern bool Zero_Display_Flag;
 extern bool Zero_Potition_Flag;
 extern bool Calibration_Flag;
+
+extern String account1_id;
+extern String account1_pw;
+extern String account2_id;
+extern String account2_pw;
+extern const char* ADMIN_ID;
+extern const char* ADMIN_PW;
 
 void saveToEEPROM();
 void resetMeasurement();
@@ -92,6 +100,86 @@ void handleWebServer() {
     client.println();
     client.print(json);
   }
+  else if (path == "/login") {
+    int idPos = query.indexOf("id=");
+    int pwPos = query.indexOf("pw=");
+    String role = "";
+    if (idPos >= 0 && pwPos >= 0) {
+      String id = query.substring(idPos + 3, query.indexOf('&', idPos) > 0 ? query.indexOf('&', idPos) : query.length());
+      String pw = query.substring(pwPos + 3);
+      
+      if (id == ADMIN_ID && pw == ADMIN_PW) {
+        role = "admin";
+      } else if (id == account1_id && pw == account1_pw) {
+        role = "supervisor";
+      } else if (id == account2_id && pw == account2_pw) {
+        role = "tester";
+      }
+    }
+    
+    StaticJsonDocument<64> doc;
+    doc["ok"] = role.length() > 0;
+    doc["role"] = role;
+    
+    String json;
+    serializeJson(doc, json);
+    
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println();
+    client.print(json);
+  }
+  else if (path == "/account/get") {
+    StaticJsonDocument<128> doc;
+    doc["id1"] = account1_id;
+    doc["id2"] = account2_id;
+    
+    String json;
+    serializeJson(doc, json);
+    
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println();
+    client.print(json);
+  }
+  else if (path == "/account/save") {
+    int t = query.indexOf("target=");
+    int i = query.indexOf("id=");
+    int p = query.indexOf("pw=");
+    if (t >= 0 && i >= 0 && p >= 0) {
+      int target = query.substring(t + 7, query.indexOf('&', t)).toInt();
+      int idEnd = query.indexOf('&', i);
+      String newId = query.substring(i + 3, idEnd > 0 ? idEnd : query.length());
+      String newPw = query.substring(p + 3);
+      
+      if (newId.length() > 0 && newId.length() <= 15 && newPw.length() > 0 && newPw.length() <= 15) {
+        if (target == 1) {
+          account1_id = newId;
+          account1_pw = newPw;
+        } else if (target == 2) {
+          account2_id = newId;
+          account2_pw = newPw;
+        }
+        saveToEEPROM();
+        client.println("HTTP/1.1 200 OK");
+        client.println("Content-Type: text/plain");
+        client.println("Connection: close");
+        client.println();
+        client.print("OK");
+      } else {
+        client.println("HTTP/1.1 400 Bad Request");
+        client.println("Connection: close");
+        client.println();
+        client.print("Invalid");
+      }
+    } else {
+      client.println("HTTP/1.1 400 Bad Request");
+      client.println("Connection: close");
+      client.println();
+    }
+  }
   else if (path == "/cal/get") {
     StaticJsonDocument<64> doc;
     doc["zero"] = cal_zero_adc;
@@ -139,17 +227,6 @@ void handleWebServer() {
       client.println("Connection: close");
       client.println();
     }
-  }
-  else if (path == "/cal/mode") {
-    int m = query.indexOf("on=");
-    if (m >= 0) {
-      setCalibrationMode(query.substring(m + 3).toInt() == 1);
-    }
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: text/plain");
-    client.println("Connection: close");
-    client.println();
-    client.print("OK");
   }
   else if (path == "/settings/save") {
     int n = query.indexOf("noise=");
