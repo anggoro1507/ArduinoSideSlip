@@ -1,10 +1,8 @@
 /*
  * html_pengujian.h
- * Halaman Pengujian - style putih/biru
- * Angka di atas
- * Menu tidak ketutup di smartphone
+ * Measurement page - English
  * WebSocket realtime
- * Axle di-lock di 1
+ * Axle locked at 1
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -16,7 +14,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>SideSlip - Pengujian</title>
+  <title>SideSlip - Measurement</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -138,7 +136,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
 
   <div class="nav">
     <a href="/">Logout</a>
-    <a href="/kalibrasi">Kalibrasi</a>
+    <a href="/kalibrasi">Calibration</a>
     <a href="/config">Config</a>
   </div>
 
@@ -158,7 +156,6 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       document.getElementById('axle').textContent = '1';
     }
 
-    // WebSocket
     const ws = new WebSocket('ws://' + location.hostname + ':81');
     const statusEl = document.getElementById('wsStatus');
 
