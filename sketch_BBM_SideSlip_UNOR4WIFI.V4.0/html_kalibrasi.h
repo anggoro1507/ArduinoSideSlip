@@ -1,6 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - load saved values on open
+ * Calibration page - ZERO also resets measurement
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -214,7 +214,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       document.getElementById('maxValue').textContent = maxValue.toFixed(1);
     }
 
-    // Load saved calibration on page open
     fetch('/cal/get').then(r => r.json()).then(d => {
       if (d.zero && d.high && d.high !== d.zero) {
         zeroAdc = d.zero;
@@ -235,6 +234,8 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       calZero = currentAdc;
       maxValue = 0;
       updateDisplay();
+      // Also reset measurement zero
+      fetch('/reset').catch(() => {});
     });
 
     document.getElementById('btnNext').addEventListener('click', function() {
