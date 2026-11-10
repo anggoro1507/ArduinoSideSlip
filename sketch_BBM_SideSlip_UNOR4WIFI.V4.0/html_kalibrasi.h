@@ -1,6 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - ZERO also resets measurement
+ * Calibration page - auto-zero on page open
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -187,9 +187,10 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   <script>
     let zeroAdc = null;
     let highAdc = null;
-    let calZero = 0;
+    let calZero = null;
     let maxValue = 0;
     let currentAdc = 0;
+    let initialized = false;
 
     function getKoef() {
       if (zeroAdc !== null && highAdc !== null && highAdc !== zeroAdc) {
@@ -199,6 +200,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     }
 
     function updateDisplay() {
+      if (calZero === null) return;
       const koef = getKoef();
       const real = (currentAdc - calZero) / koef * 10;
       document.getElementById('adc').textContent = currentAdc;
@@ -214,6 +216,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       document.getElementById('maxValue').textContent = maxValue.toFixed(1);
     }
 
+    // Load saved cal values
     fetch('/cal/get').then(r => r.json()).then(d => {
       if (d.zero && d.high && d.high !== d.zero) {
         zeroAdc = d.zero;
@@ -223,9 +226,15 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       }
     }).catch(() => {});
 
+    // Poll and auto-zero on first reading
     setInterval(() => {
       fetch('/data').then(r => r.json()).then(d => {
         currentAdc = d.adc || 0;
+        if (!initialized && currentAdc > 0) {
+          calZero = currentAdc;
+          initialized = true;
+          maxValue = 0;
+        }
         updateDisplay();
       }).catch(() => {});
     }, 200);
@@ -234,7 +243,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       calZero = currentAdc;
       maxValue = 0;
       updateDisplay();
-      // Also reset measurement zero
       fetch('/reset').catch(() => {});
     });
 
@@ -265,8 +273,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     document.getElementById('btnExit').addEventListener('click', function() {
       window.location.href = '/pengujian';
     });
-
-    updateDisplay();
   </script>
 </body>
 </html>
