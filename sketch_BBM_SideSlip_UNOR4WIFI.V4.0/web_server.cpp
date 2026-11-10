@@ -1,6 +1,5 @@
 /*
  * web_server.cpp
- * Fixed URL decode for login
  */
 
 #include "web_server.h"
@@ -65,7 +64,6 @@ String getParam(String query, String key) {
 
 void setupWebServer() {
   server.begin();
-  Serial.println("Web server started on port 80");
 }
 
 void handleWebServer() {
@@ -129,9 +127,6 @@ void handleWebServer() {
     String id = getParam(query, "id");
     String pw = getParam(query, "pw");
     String role = "";
-    
-    Serial.print("Login: id="); Serial.print(id);
-    Serial.print(" pw="); Serial.println(pw);
     
     if (id == ADMIN_ID && pw == ADMIN_PW) {
       role = "admin";
@@ -285,6 +280,7 @@ void handleWebServer() {
     }
     else if (path == "/pengujian") {
       setCalibrationMode(false);
+      resetMeasurement();
       client.print(HTML_PENGUJIAN);
     }
     else if (path == "/kalibrasi") {
