@@ -1,6 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
- * Logic match VB: Measure() + display flags
+ * Rate limited measurement (50ms)
  */
 
 #include <WiFiS3.h>
@@ -13,6 +13,7 @@
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
 #define INTERVAL_MS         37
+#define MEASURE_INTERVAL_MS 50
 
 const char* AP_SSID         = "SideSlipBBM";
 const char* AP_PASSWORD     = "12345678";
@@ -25,20 +26,19 @@ String account1_pw          = "1";
 String account2_id          = "2";
 String account2_pw          = "2";
 
-// Calibration (from EEPROM)
 int cal_zero_adc            = 0;
 int cal_high_adc            = 0;
 float Koef_ADC              = 256;
 float noise_tolerance       = 0.3f;
 int wait_time_measure       = 3;
 
-float alpha                 = 0.8f;
+float alpha                 = 0.5f;
 float sensorFilter          = 0;
 
 int rcv                     = 0;
 unsigned long per_37ms      = 0;
+unsigned long lastMeasure   = 0;
 
-// VB variables
 int Int_ADC                 = 0;
 int Zero_ADC                = 0;
 int High_ADC                = 0;
@@ -87,20 +87,25 @@ void setup() {
 }
 
 void loop() {
+  // Read and filter ADC (fast)
   int raw14 = analogRead(SENSOR_PIN);
   int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
   sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
-  Int_ADC = (int)sensorFilter;
 
   handleSerialProtocol();
   handleWebServer();
 
-  if (!Calibration_Flag) {
-    Measure(Int_ADC);
+  // Rate limited measurement (50ms)
+  unsigned long now = millis();
+  if (now - lastMeasure >= MEASURE_INTERVAL_MS) {
+    Int_ADC = (int)sensorFilter;
+    if (!Calibration_Flag) {
+      Measure(Int_ADC);
+    }
+    lastMeasure = now;
   }
 }
 
-// Match VB Measure()
 void Measure(int Data) {
   float noiseThreshold = noise_tolerance * 9999.0f / 100.0f;
 
@@ -155,7 +160,6 @@ void Measure(int Data) {
       if (abs(Data - Last_ADC) > noiseThreshold) {
         t2 = millis();
       } else if (millis() - t2 > 500) {
-        // Calculate result
         if (High_ADC_flag) {
           Value_result = (High_ADC - Zero_ADC) / Koef_ADC * 10.0f;
         } else {
@@ -163,7 +167,6 @@ void Measure(int Data) {
         }
         Show_Result_Flag = true;
 
-        // Auto-zero
         Zero_ADC = Data;
         High_ADC = Data;
         Low_ADC = Data;
