@@ -3,6 +3,7 @@
  * Halaman Pengujian - mengikuti tampilan software SSP2000
  * Tidak menampilkan ADC mentah
  * Warna: Merah jika |nilai| > 5 mm/m, Hijau jika normal, Abu jika nol
+ * Axle di-lock di 1 (tidak naik meski lewat berkali-kali)
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -129,7 +130,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     <div class="unit">mm / m</div>
   </div>
 
-  <div class="axle" id="axle">0</div>
+  <!-- Axle di-lock di 1 -->
+  <div class="axle" id="axle">1</div>
 
   <div class="wheels">
     <div class="wheel left"></div>
@@ -161,6 +163,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       } else {
         el.classList.add('ok');
       }
+      // Axle tetap 1
+      document.getElementById('axle').textContent = '1';
     }
     // Demo
     updateValue(0);
