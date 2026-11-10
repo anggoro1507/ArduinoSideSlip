@@ -1,6 +1,6 @@
 /*
  * web_server.cpp
- * Web Server + endpoint /data untuk polling
+ * Web Server + endpoint /data, /cal/save, /settings/save
  */
 
 #include "web_server.h"
@@ -13,12 +13,17 @@
 
 WiFiServer server(80);
 
-// External dari main sketch
 extern float sensorFilter;
 extern int cal_zero_adc;
 extern int cal_high_adc;
+extern float noise_tolerance;
+extern int wait_time_measure;
+extern float peak_value;
+extern bool show_result_flag;
 
 float calculateSideSlip(int adc);
+void saveToEEPROM();
+void resetMeasurement();
 
 void setupWebServer() {
   server.begin();
@@ -40,14 +45,19 @@ void handleWebServer() {
   }
 
   int q = path.indexOf('?');
-  if (q > 0) path = path.substring(0, q);
+  String query = "";
+  if (q > 0) {
+    query = path.substring(q + 1);
+    path = path.substring(0, q);
+  }
 
   if (path == "/data") {
-    // JSON data untuk polling
     float val = calculateSideSlip((int)sensorFilter);
     StaticJsonDocument<128> doc;
     doc["value"] = val;
     doc["adc"] = (int)sensorFilter;
+    doc["peak"] = peak_value;
+    doc["result"] = show_result_flag;
 
     String json;
     serializeJson(doc, json);
@@ -58,6 +68,54 @@ void handleWebServer() {
     client.println("Connection: close");
     client.println();
     client.print(json);
+  }
+  else if (path == "/cal/save") {
+    // Parse query: zero=123&high=456
+    int z = query.indexOf("zero=");
+    int h = query.indexOf("high=");
+    if (z >= 0 && h >= 0) {
+      cal_zero_adc = query.substring(z + 5).toInt();
+      int amp = query.indexOf('&', h);
+      cal_high_adc = query.substring(h + 5, amp > 0 ? amp : query.length()).toInt();
+      saveToEEPROM();
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/plain");
+      client.println("Connection: close");
+      client.println();
+      client.print("OK");
+    } else {
+      client.println("HTTP/1.1 400 Bad Request");
+      client.println("Connection: close");
+      client.println();
+    }
+  }
+  else if (path == "/settings/save") {
+    // Parse query: noise=0.3&wait=3
+    int n = query.indexOf("noise=");
+    int w = query.indexOf("wait=");
+    if (n >= 0 && w >= 0) {
+      noise_tolerance = query.substring(n + 6).toFloat();
+      int amp = query.indexOf('&', w);
+      wait_time_measure = query.substring(w + 5, amp > 0 ? amp : query.length()).toInt();
+      saveToEEPROM();
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/plain");
+      client.println("Connection: close");
+      client.println();
+      client.print("OK");
+    } else {
+      client.println("HTTP/1.1 400 Bad Request");
+      client.println("Connection: close");
+      client.println();
+    }
+  }
+  else if (path == "/reset") {
+    resetMeasurement();
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/plain");
+    client.println("Connection: close");
+    client.println();
+    client.print("OK");
   }
   else if (path == "/style.css") {
     client.println("HTTP/1.1 200 OK");
