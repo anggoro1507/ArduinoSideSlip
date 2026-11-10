@@ -1,7 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - English, connected to Arduino
- * Koefisien dihitung dari zero dan high (bukan hardcoded)
+ * Calibration page - load saved values on open
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -214,6 +213,16 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       }
       document.getElementById('maxValue').textContent = maxValue.toFixed(1);
     }
+
+    // Load saved calibration on page open
+    fetch('/cal/get').then(r => r.json()).then(d => {
+      if (d.zero && d.high && d.high !== d.zero) {
+        zeroAdc = d.zero;
+        highAdc = d.high;
+        document.getElementById('zeroAdc').textContent = zeroAdc;
+        document.getElementById('highAdc').textContent = highAdc;
+      }
+    }).catch(() => {});
 
     setInterval(() => {
       fetch('/data').then(r => r.json()).then(d => {
