@@ -1,6 +1,7 @@
 /*
  * html_pengujian.h
  * Halaman Pengujian - style putih/biru
+ * Angka di atas (bukan center vertikal)
  * Responsive: kecil di smartphone, besar di PC
  * Axle di-lock di 1
  */
@@ -25,17 +26,17 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       padding: 16px;
     }
     .value-box {
       text-align: center;
       background: #fff;
-      padding: 24px;
+      padding: 20px;
       border-radius: 12px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
       width: 100%;
       max-width: 320px;
+      margin-top: 12px;
     }
     #value {
       font-size: 56px;
@@ -66,6 +67,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
     .nav {
+      margin-top: auto;
+      padding-bottom: 16px;
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
@@ -85,7 +88,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     @media (min-width: 800px) {
       .value-box {
         max-width: 480px;
-        padding: 40px;
+        padding: 32px;
+        margin-top: 24px;
       }
       #value {
         font-size: 96px;
