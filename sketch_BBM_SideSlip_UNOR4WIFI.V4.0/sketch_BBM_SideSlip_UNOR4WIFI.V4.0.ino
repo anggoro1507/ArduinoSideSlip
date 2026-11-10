@@ -33,7 +33,6 @@ String account1_pw          = "1";
 String account2_id          = "2";
 String account2_pw          = "2";
 
-// Kalibrasi & Settings (extern agar bisa diakses web_server)
 int cal_zero_adc            = 0;
 int cal_high_adc            = 0;
 float noise_tolerance       = 0.3f;
@@ -58,17 +57,17 @@ unsigned long t1            = 0;
 unsigned long t2            = 0;
 int last_adc                = 0;
 
-// ==================== EEPROM MAP ====================
-#define EE_MAGIC            0
-#define EE_CAL_ZERO         2
-#define EE_CAL_HIGH         4
-#define EE_NOISE            6
-#define EE_WAIT_TIME        10
-#define EE_ACC1_ID          12
-#define EE_ACC1_PW          28
-#define EE_ACC2_ID          44
-#define EE_ACC2_PW          60
-#define EE_END              76
+// ==================== EEPROM MAP (R4: int=4 byte) ====================
+#define EE_MAGIC            0   // uint16_t = 2 byte
+#define EE_CAL_ZERO         4   // int = 4 byte
+#define EE_CAL_HIGH         8   // int = 4 byte
+#define EE_NOISE            12  // float = 4 byte
+#define EE_WAIT_TIME        16  // int = 4 byte
+#define EE_ACC1_ID          20  // char[16]
+#define EE_ACC1_PW          36  // char[16]
+#define EE_ACC2_ID          52  // char[16]
+#define EE_ACC2_PW          68  // char[16]
+#define EE_END              84
 
 // ==================== SETUP ====================
 void setup() {
@@ -101,7 +100,6 @@ void updateMeasurement(int data) {
   float noiseThreshold = noise_tolerance * 9999.0f / 100.0f;
 
   if (zero_position_flag && abs(data - zero_adc) > noiseThreshold) {
-    // Movement detected
     if (data > zero_adc) {
       high_adc = data;
     } else {
@@ -136,7 +134,6 @@ void updateMeasurement(int data) {
     if (abs(data - last_adc) > noiseThreshold) {
       t2 = millis();
     } else if (millis() - t2 > 500) {
-      // Stable - update zero and show result
       int peakAdc = (abs(high_adc - zero_adc) > abs(low_adc - zero_adc)) ? high_adc : low_adc;
       peak_value = calculateSideSlip(peakAdc);
       show_result_flag = true;
@@ -191,6 +188,7 @@ void loadFromEEPROM() {
   EEPROM.get(EE_MAGIC, magic);
 
   if (magic != 0xB2C0) {
+    Serial.println("EEPROM empty, init defaults");
     saveToEEPROM();
     return;
   }
@@ -206,7 +204,8 @@ void loadFromEEPROM() {
   EEPROM.get(EE_ACC2_ID, buf); account2_id = String(buf);
   EEPROM.get(EE_ACC2_PW, buf); account2_pw = String(buf);
 
-  Serial.println("EEPROM loaded");
+  Serial.print("EEPROM loaded: zero="); Serial.print(cal_zero_adc);
+  Serial.print(" high="); Serial.println(cal_high_adc);
 }
 
 void saveToEEPROM() {
