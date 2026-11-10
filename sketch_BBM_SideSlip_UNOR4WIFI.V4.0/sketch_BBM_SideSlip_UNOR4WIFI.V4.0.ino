@@ -1,6 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
- * Fix: reset result flag on new measurement
+ * Reset EEPROM magic to reinitialize accounts
  */
 
 #include <WiFiS3.h>
@@ -72,6 +72,8 @@ unsigned long t2            = 0;
 #define EE_ACC2_PW          68
 #define EE_END              84
 
+#define MAGIC_VALUE         0xB2C1
+
 void setup() {
   Serial.begin(SERIAL_BAUD);
   Serial1.begin(SERIAL_BAUD);
@@ -124,7 +126,6 @@ void Measure(int Data) {
     Get_Zero_ADC_Flag = false;
   }
 
-  // New measurement starts - reset result flag
   if (Zero_Potition_Flag && abs(Data - Zero_ADC) > noiseThreshold) {
     Show_Result_Flag = false;
     if (Data > Zero_ADC) {
@@ -224,8 +225,8 @@ void loadFromEEPROM() {
   uint16_t magic;
   EEPROM.get(EE_MAGIC, magic);
 
-  if (magic != 0xB2C0) {
-    Serial.println("EEPROM empty, init defaults");
+  if (magic != MAGIC_VALUE) {
+    Serial.println("EEPROM reset, init defaults");
     saveToEEPROM();
     return;
   }
@@ -240,16 +241,21 @@ void loadFromEEPROM() {
   }
 
   char buf[17];
+  memset(buf, 0, sizeof(buf));
   EEPROM.get(EE_ACC1_ID, buf); account1_id = String(buf);
+  memset(buf, 0, sizeof(buf));
   EEPROM.get(EE_ACC1_PW, buf); account1_pw = String(buf);
+  memset(buf, 0, sizeof(buf));
   EEPROM.get(EE_ACC2_ID, buf); account2_id = String(buf);
+  memset(buf, 0, sizeof(buf));
   EEPROM.get(EE_ACC2_PW, buf); account2_pw = String(buf);
 
-  Serial.print("Loaded: Koef="); Serial.println(Koef_ADC);
+  Serial.print("Loaded: Acc1="); Serial.print(account1_id);
+  Serial.print(" Acc2="); Serial.println(account2_id);
 }
 
 void saveToEEPROM() {
-  uint16_t magic = 0xB2C0;
+  uint16_t magic = MAGIC_VALUE;
   EEPROM.put(EE_MAGIC, magic);
   EEPROM.put(EE_CAL_ZERO, cal_zero_adc);
   EEPROM.put(EE_CAL_HIGH, cal_high_adc);
@@ -261,10 +267,14 @@ void saveToEEPROM() {
   }
 
   char buf[17];
+  memset(buf, 0, sizeof(buf));
   account1_id.toCharArray(buf, 16); EEPROM.put(EE_ACC1_ID, buf);
+  memset(buf, 0, sizeof(buf));
   account1_pw.toCharArray(buf, 16); EEPROM.put(EE_ACC1_PW, buf);
+  memset(buf, 0, sizeof(buf));
   account2_id.toCharArray(buf, 16); EEPROM.put(EE_ACC2_ID, buf);
+  memset(buf, 0, sizeof(buf));
   account2_pw.toCharArray(buf, 16); EEPROM.put(EE_ACC2_PW, buf);
 
-  Serial.println("EEPROM saved");
+  Serial.println("EEPROM saved with defaults");
 }
