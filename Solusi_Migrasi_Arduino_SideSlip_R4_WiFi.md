@@ -167,9 +167,21 @@ Contoh dari `SideSlipSettings.txt`:
 | Halaman | Path | Fungsi Utama | Akses |
 |---------|------|--------------|-------|
 | **Halaman Utama** | `/` | Login | Semua |
-| **Pengujian** | `/pengujian` | Pengujian real-time (zero dinamis + deviasi plus/minus) | Semua akun |
+| **Pengujian** | `/pengujian` | Tampilan seperti software SSP2000 (angka besar berwarna, visual roda, **tanpa ADC**) | Semua akun |
 | **Kalibrasi** | `/kalibrasi` | Set Zero + High (10 mm/m) untuk hitung koefisien, simpan ke EEPROM | ID:1 / sa |
 | **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
+
+### Tampilan Halaman Pengujian (mengikuti SSP2000)
+
+- Background hitam
+- Kotak status di kiri atas
+- Angka besar di tengah:
+  - **Hijau** = nilai plus
+  - **Merah** = nilai minus
+  - **Abu-abu** = nol
+- Visual roda + garis alignment
+- Angka axle di bawah
+- **Tidak menampilkan ADC mentah**
 
 ### Komunikasi WebSocket (JSON) — Belum Diimplementasi
 
@@ -177,10 +189,10 @@ Contoh dari `SideSlipSettings.txt`:
 ```json
 {
   "type": "data",
-  "raw": 512,
   "value": -1.25,
   "unit": "mm/m",
   "peak_value": -2.5,
+  "axle": 1,
   "status": "measuring"
 }
 ```
@@ -204,7 +216,7 @@ Folder: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/`
 | `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino` | Sensor + Serial + EEPROM + panggil web server |
 | `web_server.cpp` / `.h` | Web server port 80, routing 4 halaman + CSS |
 | `html_index.h` | Halaman login |
-| `html_pengujian.h` | Halaman pengujian (tampilan dasar) |
+| `html_pengujian.h` | **Halaman pengujian gaya SSP2000** (dark, angka besar, visual roda, tanpa ADC) |
 | `html_kalibrasi.h` | Halaman kalibrasi (tombol dasar) |
 | `html_config.h` | Halaman config (settings + ubah akun) |
 | `web_common.h` | CSS bersama |
@@ -225,7 +237,7 @@ Folder: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/`
 
 ## Langkah Kerja Selanjutnya
 
-1. **WebSocket** (streaming data real-time).
+1. **WebSocket** (streaming data real-time ke halaman pengujian).
 2. Login system (validasi ke Arduino).
 3. Logika pengujian (zero dinamis + peak).
 4. Hubungkan tombol Kalibrasi & Config ke Arduino.
@@ -233,5 +245,5 @@ Folder: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/`
 
 ---
 
-**Status:** Web Server sudah selesai (halaman + routing + CSS).  
+**Status:** Halaman pengujian sudah mengikuti tampilan SSP2000 (tanpa ADC).  
 Siap lanjut ke **WebSocket**.
