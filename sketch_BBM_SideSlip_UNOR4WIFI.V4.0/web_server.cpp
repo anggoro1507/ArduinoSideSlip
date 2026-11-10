@@ -1,6 +1,6 @@
 /*
  * web_server.cpp
- * Login, account, session endpoints
+ * Fixed login parsing
  */
 
 #include "web_server.h"
@@ -37,6 +37,15 @@ extern const char* ADMIN_PW;
 void saveToEEPROM();
 void resetMeasurement();
 void setCalibrationMode(bool on);
+
+String getParam(String query, String key) {
+  int start = query.indexOf(key + "=");
+  if (start < 0) return "";
+  start += key.length() + 1;
+  int end = query.indexOf('&', start);
+  if (end < 0) end = query.length();
+  return query.substring(start, end);
+}
 
 void setupWebServer() {
   server.begin();
@@ -101,20 +110,20 @@ void handleWebServer() {
     client.print(json);
   }
   else if (path == "/login") {
-    int idPos = query.indexOf("id=");
-    int pwPos = query.indexOf("pw=");
+    String id = getParam(query, "id");
+    String pw = getParam(query, "pw");
     String role = "";
-    if (idPos >= 0 && pwPos >= 0) {
-      String id = query.substring(idPos + 3, query.indexOf('&', idPos) > 0 ? query.indexOf('&', idPos) : query.length());
-      String pw = query.substring(pwPos + 3);
-      
-      if (id == ADMIN_ID && pw == ADMIN_PW) {
-        role = "admin";
-      } else if (id == account1_id && pw == account1_pw) {
-        role = "supervisor";
-      } else if (id == account2_id && pw == account2_pw) {
-        role = "tester";
-      }
+    
+    Serial.print("Login: id="); Serial.print(id);
+    Serial.print(" pw="); Serial.println(pw);
+    Serial.print("Acc1: "); Serial.print(account1_id); Serial.print("/"); Serial.println(account1_pw);
+    
+    if (id == ADMIN_ID && pw == ADMIN_PW) {
+      role = "admin";
+    } else if (id == account1_id && pw == account1_pw) {
+      role = "supervisor";
+    } else if (id == account2_id && pw == account2_pw) {
+      role = "tester";
     }
     
     StaticJsonDocument<64> doc;
@@ -145,39 +154,29 @@ void handleWebServer() {
     client.print(json);
   }
   else if (path == "/account/save") {
-    int t = query.indexOf("target=");
-    int i = query.indexOf("id=");
-    int p = query.indexOf("pw=");
-    if (t >= 0 && i >= 0 && p >= 0) {
-      int target = query.substring(t + 7, query.indexOf('&', t)).toInt();
-      int idEnd = query.indexOf('&', i);
-      String newId = query.substring(i + 3, idEnd > 0 ? idEnd : query.length());
-      String newPw = query.substring(p + 3);
-      
-      if (newId.length() > 0 && newId.length() <= 15 && newPw.length() > 0 && newPw.length() <= 15) {
-        if (target == 1) {
-          account1_id = newId;
-          account1_pw = newPw;
-        } else if (target == 2) {
-          account2_id = newId;
-          account2_pw = newPw;
-        }
-        saveToEEPROM();
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-Type: text/plain");
-        client.println("Connection: close");
-        client.println();
-        client.print("OK");
-      } else {
-        client.println("HTTP/1.1 400 Bad Request");
-        client.println("Connection: close");
-        client.println();
-        client.print("Invalid");
+    String target = getParam(query, "target");
+    String newId = getParam(query, "id");
+    String newPw = getParam(query, "pw");
+    
+    if (newId.length() > 0 && newId.length() <= 15 && newPw.length() > 0 && newPw.length() <= 15) {
+      if (target == "1") {
+        account1_id = newId;
+        account1_pw = newPw;
+      } else if (target == "2") {
+        account2_id = newId;
+        account2_pw = newPw;
       }
+      saveToEEPROM();
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/plain");
+      client.println("Connection: close");
+      client.println();
+      client.print("OK");
     } else {
       client.println("HTTP/1.1 400 Bad Request");
       client.println("Connection: close");
       client.println();
+      client.print("Invalid");
     }
   }
   else if (path == "/cal/get") {
@@ -210,12 +209,11 @@ void handleWebServer() {
     client.print(json);
   }
   else if (path == "/cal/save") {
-    int z = query.indexOf("zero=");
-    int h = query.indexOf("high=");
-    if (z >= 0 && h >= 0) {
-      cal_zero_adc = query.substring(z + 5).toInt();
-      int amp = query.indexOf('&', h);
-      cal_high_adc = query.substring(h + 5, amp > 0 ? amp : query.length()).toInt();
+    String zeroStr = getParam(query, "zero");
+    String highStr = getParam(query, "high");
+    if (zeroStr.length() > 0 && highStr.length() > 0) {
+      cal_zero_adc = zeroStr.toInt();
+      cal_high_adc = highStr.toInt();
       saveToEEPROM();
       client.println("HTTP/1.1 200 OK");
       client.println("Content-Type: text/plain");
@@ -229,12 +227,11 @@ void handleWebServer() {
     }
   }
   else if (path == "/settings/save") {
-    int n = query.indexOf("noise=");
-    int w = query.indexOf("wait=");
-    if (n >= 0 && w >= 0) {
-      noise_tolerance = query.substring(n + 6).toFloat();
-      int amp = query.indexOf('&', w);
-      wait_time_measure = query.substring(w + 5, amp > 0 ? amp : query.length()).toInt();
+    String noiseStr = getParam(query, "noise");
+    String waitStr = getParam(query, "wait");
+    if (noiseStr.length() > 0 && waitStr.length() > 0) {
+      noise_tolerance = noiseStr.toFloat();
+      wait_time_measure = waitStr.toInt();
       saveToEEPROM();
       client.println("HTTP/1.1 200 OK");
       client.println("Content-Type: text/plain");
