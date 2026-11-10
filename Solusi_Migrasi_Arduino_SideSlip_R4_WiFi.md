@@ -1,249 +1,99 @@
 # Solusi Migrasi Arduino SideSlip ke Uno R4 WiFi (V4.0)
 
 ## Tujuan
-Migrasi dari Arduino Uno R3 (`sketch_BBM_SideSlip.V1.2.ino`) ke **Arduino Uno R4 WiFi**.
+Migrasi dari Arduino Uno R3 ke **Arduino Uno R4 WiFi**.
 
 **Persyaratan:**
-- Tetap membaca sensor data mentah (raw sensor data) sama seperti versi R3.
-- **Kompatibel dengan software SSP2000** (protokol serial yang sudah berjalan normal tetap didukung via USB Serial).
-- Menambahkan **WebSocket + Web UI** dengan struktur mirip SSP2000:
-  - **Halaman Utama** (Main)
-  - **Kalibrasi**
-  - **Config**
-  - **Pengujian**
-- Semua sudah include di board R4 WiFi (WiFi onboard).
+- Tetap membaca sensor data mentah (A5)
+- **Kompatibel dengan software SSP2000** (protokol serial)
+- Web UI dengan struktur mirip SSP2000
+- Semua include di board R4 WiFi
 
-## Keputusan Desain (Sudah Dikonfirmasi)
+## Keputusan Desain
 
 | Aspek | Keputusan |
 |-------|-----------|
-| **WiFi** | **AP Mode** dari Arduino R4 sendiri (connect langsung ke SSID Arduino) |
-| **SSID** | `SideSlipBBM` |
-| **Password WiFi** | `12345678` |
-| **ADC Resolusi** | **14-bit** dibaca, lalu **dimapping ke 0–9999** agar tetap 4 digit |
-| **Kalibrasi** | Simpan **koefisien** (dari Zero + High). High = **10 mm/m** |
-| **Penyimpanan** | **EEPROM** (ganti file text di SSP2000) |
-| **Serial** | Buka 2 Serial hardware di R4 (tidak perlu SoftwareSerial) |
-| **Noise Tolerance** | Dihitung dari max **9999** (bukan 1023) |
+| **WiFi** | AP Mode, SSID: `SideSlipBBM`, Password: `12345678` |
+| **ADC** | 14-bit → mapping 0–9999 |
+| **Kalibrasi** | Simpan koefisien (Zero + High), High = 10 mm/m |
+| **Penyimpanan** | EEPROM |
+| **Serial** | Serial (USB) + Serial1, 9600 baud |
+| **Noise Tolerance** | % dari 9999 |
 | **Magic Bytes** | `0xB2C0` |
+| **Data Rate** | Baca 37ms, Measure 70ms |
 
-## Port & Serial yang Dipakai
+## Status Implementasi
 
-| Port | Fungsi | Baudrate | Keterangan |
-|------|--------|----------|------------|
-| **Serial** (USB) | Komunikasi dengan software **SSP2000** | 9600 | Port utama (sama seperti R3) |
-| **Serial1** | Cadangan / alternatif | 9600 | Hardware serial kedua di R4 |
-| **WiFi AP** | Web UI + WebSocket | - | SSID: `SideSlipBBM` / Password: `12345678` |
-| **Pin A5** | Sensor side slip (analog) | - | ADC 14-bit → mapping 0–9999 |
+### Sudah Selesai
 
-### Protokol Serial SSP2000
+| Fitur | Status | Keterangan |
+|-------|--------|------------|
+| **EEPROM** | ✅ | Load/save kalibrasi, settings, akun. Address map fixed untuk R4 (int 4-byte) |
+| **Web Server** | ✅ | Port 80, routing 4 halaman |
+| **HTTP Polling** | ✅ | `/data` setiap 200ms (WebSocket tidak stabil di R4) |
+| **Login UI** | ✅ | Halaman login (belum validasi ke Arduino) |
+| **Kalibrasi** | ✅ | UI + save/load EEPROM, auto-zero, tombol ZERO |
+| **Config** | ✅ | UI + save/load settings |
+| **Logika Pengukuran** | ✅ | Zero dinamis, peak plus/minus, stabil detection |
+| **Status Display** | ✅ | ZEROED / MEASURING / RESULT |
+| **Serial SSP2000** | ✅ | Protokol `*XXXX#` setelah terima 'R' |
 
-- Arduino **menunggu** karakter **'R'** dari software.
-- Setelah terima **'R'**, Arduino kirim data ADC dalam format: `*XXXX#` terus-menerus setiap ~37 ms.
-- Contoh: `*0512#`, `*5000#`, `*9999#`
-- Data yang dikirim adalah nilai **setelah mapping** (0–9999) + filter.
-- Kirim karakter lain (bukan 'R') untuk berhenti.
+### Belum Selesai
 
-## Sistem Login (Halaman Utama)
+| No | Fitur | Keterangan |
+|----|-------|------------|
+| 1 | **Login System** | Validasi ID/PW ke Arduino |
+| 2 | **Ubah Akun** | ID1 bisa ganti ID1/ID2 |
+| 3 | **Session/Timeout** | Auto-logout setelah idle |
+| 4 | **Testing Dual Mode** | Uji Serial + Web bersamaan |
 
-Login wajib di halaman utama sebelum mengakses fitur lain.
-
-| Akun | ID (Default) | Password (Default) | Role | Akses | Penyimpanan |
-|------|--------------|---------------------|------|-------|-------------|
-| **Kepala** | `1` | `1` | Kepala | Semua akses + bisa ubah ID/PW sendiri dan ID:2 | EEPROM |
-| **Penguji** | `2` | `2` | Penguji | **Bisa melakukan pengujian / realtime** | EEPROM |
-| **Admin** | `sa` | `@abcd1234` | Admin | Full admin | **Hardcoded** (tidak disimpan di EEPROM) |
-
-### Aturan Login
-- **ID:2 (Penguji) bisa melakukan pengujian** (halaman utama / realtime).
-- ID:1 (Kepala) bisa mengubah:
-  - ID & password miliknya sendiri
-  - ID & password ID:2 (Penguji)
-- ID:sa tidak bisa diubah lewat UI dan tidak disimpan di EEPROM.
-- Halaman **Kalibrasi** dan **Config** hanya bisa diakses oleh ID:1 atau sa.
-- Setelah login, session disimpan di browser (localStorage / session).
-- **Multi-login**: ID sama boleh login di banyak perangkat.
-- **Timeout**: Auto-logout setelah idle 10 menit (rencana).
-
-### Aturan ID & Password (Harus Ditampilkan Saat Kepala Ubah Akun)
-
-| Aturan | Keterangan |
-|--------|------------|
-| **Panjang maksimal** | **15 karakter** (ID dan Password) |
-| **Huruf & Angka** | Boleh (`a-z`, `A-Z`, `0-9`) |
-| **Simbol** | Boleh (`@ # $ % & * + - _ .`) |
-| **Spasi** | **Tidak disarankan** |
-| **Karakter kontrol** | **Tidak boleh** (`\0`, `\n`, `\r`, `\t`) |
-| **Non-ASCII / Emoji** | **Tidak disarankan** |
-
-> **Catatan:** Saat Kepala membuka halaman ubah akun, tampilkan info ini di UI supaya tidak salah input.
-
-## Cara Pengukuran / Pengujian (Alur yang Benar)
-
-### Konsep Utama
-- Yang diambil dari **kalibrasi** adalah **koefisien** (bukan zero tetap).
-- **Zero bersifat dinamis** (otomatis diupdate saat pengujian).
-- Selisih posisi plat saat berhenti dengan zero yang tersimpan **tidak masalah**.
-- Nilai yang dicatat adalah **deviasi terbesar** dari zero (bisa **plus** atau **minus**).
-
-### Alur Pengujian
-
-1. **Alat aktif** → ambil nilai ADC saat ini sebagai **zero** (otomatis).
-2. **Mobil lewat plat** → terjadi pergerakan (nilai ADC naik atau turun).
-3. Sistem mencatat **deviasi terbesar** dari zero:
-   - Jika plat geser ke **kanan** → nilai **plus** terbesar.
-   - Jika plat geser ke **kiri** → nilai **minus** terbesar (paling kecil).
-4. Setelah mobil lewat, nilai raw kembali ke posisi stabil.
-5. Jika tidak ada perubahan selama **Wait Time Measure** (default 3 detik) dalam batas **Noise Tolerance** (default 0.3% dari 9999):
-   - Nilai ADC yang stabil itu menjadi **zero baru**.
-6. **Display menampilkan nilai deviasi terbesar** (dalam mm/m, dihitung dengan koefisien). Bisa positif (+) atau negatif (-).
-7. Jika ada mobil berikutnya lewat, proses otomatis diulang.
-
-### Contoh Sederhana
-
-**Plat geser ke kanan (plus):**
-```
-Zero awal     = 5000
-Mobil lewat   = nilai naik sampai 6500  → Deviasi terbesar = +1500
-Stabil 3 detik di 5100 → Zero baru = 5100
-Display       = +1.5 mm/m (contoh)
-```
-
-**Plat geser ke kiri (minus):**
-```
-Zero awal     = 5000
-Mobil lewat   = nilai turun sampai 3500  → Deviasi terbesar = -1500
-Stabil 3 detik di 4900 → Zero baru = 4900
-Display       = -1.5 mm/m (contoh)
-```
-
-> **Penting:** Jangan hanya ambil nilai absolut (MAX). Harus mendukung nilai **minus** agar arah side slip benar.
-
-## Arsitektur Solusi
-
-### Dual Interface
+## File Struktur
 
 ```
-[Sensors A5] → [Arduino Uno R4 WiFi]
-                    ├── USB Serial (Serial) → SSP2000 (protokol lama)
-                    ├── Serial1 (cadangan)
-                    └── WiFi AP + Web Server → Browser
-                          ├── /            → Halaman Utama (login)
-                          ├── /pengujian   → Pengujian real-time (semua akun)
-                          ├── /kalibrasi   → Kalibrasi (hanya ID1 / sa)
-                          └── /config      → Config (hanya ID1 / sa)
+sketch_BBM_SideSlip_UNOR4WIFI.V4.0/
+├── sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino  ← Main: sensor, measure, EEPROM
+├── web_server.cpp / .h                      ← HTTP server + endpoints
+├── html_index.h                             ← Login page
+├── html_pengujian.h                         ← Measurement page
+├── html_kalibrasi.h                         ← Calibration page
+├── html_config.h                            ← Config page
+└── web_common.h                             ← CSS
 ```
 
-## Format Kalibrasi & Settings (dari SSP2000)
+## Endpoint API
 
-### Kalibrasi (disimpan di EEPROM)
-Contoh dari `SideSlipCalibration.txt`:
+| Endpoint | Method | Fungsi |
+|----------|--------|--------|
+| `/data` | GET | Data realtime (adc, value, max, result, zeroed) |
+| `/cal/get` | GET | Load kalibrasi (zero, high, koef) |
+| `/cal/save?zero=X&high=Y` | GET | Simpan kalibrasi |
+| `/settings/get` | GET | Load settings (noise, wait) |
+| `/settings/save?noise=X&wait=Y` | GET | Simpan settings |
+| `/reset` | GET | Manual zero |
+
+## Logika Pengukuran (Match VB)
+
+1. **Zero dinamis** — ADC stabil saat ini = zero
+2. **Deteksi pergerakan** — jika > noise threshold
+3. **Track peak** — High_ADC (plus) atau Low_ADC (minus)
+4. **Stabil 2.5 detik** — mulai countdown
+5. **Wait time** — jika stabil, hitung result dan auto-zero
+
+## Cara Pengukuran
+
 ```
-*-511Z511H0#
-```
-Format di kode VB:
-```
-*Koef_ADC Z Zero_ADC H High_ADC #
-```
-- Yang dipakai saat pengujian adalah **Koef_ADC** (koefisien).
-- Zero ADC dan High ADC hanya untuk menghitung koefisien.
-- High = posisi **10 mm/m**.
-
-### Settings (disimpan di EEPROM)
-Contoh dari `SideSlipSettings.txt`:
-```
-*0.3T3#
-```
-- Noise Zero Tolerance: `0.3` (%) → dihitung dari max **9999**
-- Wait Time Measure: `3` (detik)
-
-### Akun (disimpan di EEPROM)
-- ID:1 + Password:1 (Kepala)
-- ID:2 + Password:2 (Penguji)
-- Maksimal **15 karakter** per field
-
-## Struktur Web UI (Mirip SSP2000)
-
-| Halaman | Path | Fungsi Utama | Akses |
-|---------|------|--------------|-------|
-| **Halaman Utama** | `/` | Login | Semua |
-| **Pengujian** | `/pengujian` | Tampilan seperti software SSP2000 (angka besar berwarna, visual roda, **tanpa ADC**) | Semua akun |
-| **Kalibrasi** | `/kalibrasi` | Set Zero + High (10 mm/m) untuk hitung koefisien, simpan ke EEPROM | ID:1 / sa |
-| **Config** | `/config` | Noise tolerance, wait time, ubah akun | ID:1 / sa |
-
-### Tampilan Halaman Pengujian (mengikuti SSP2000)
-
-- Background hitam
-- Kotak status di kiri atas
-- Angka besar di tengah:
-  - **Hijau** = nilai plus
-  - **Merah** = nilai minus
-  - **Abu-abu** = nol
-- Visual roda + garis alignment
-- Angka axle di bawah
-- **Tidak menampilkan ADC mentah**
-
-### Komunikasi WebSocket (JSON) — Belum Diimplementasi
-
-**Data dari Arduino → Browser:**
-```json
-{
-  "type": "data",
-  "value": -1.25,
-  "unit": "mm/m",
-  "peak_value": -2.5,
-  "axle": 1,
-  "status": "measuring"
-}
+Zero awal = ADC stabil
+Mobil lewat → track peak (plus/minus)
+Stabil → tampilkan peak, zero baru = ADC stabil
+Siap untuk mobil berikutnya
 ```
 
-**Command dari Browser → Arduino:**
-```json
-{ "cmd": "login", "id": "2", "pw": "2" }
-{ "cmd": "calibrate_zero" }
-{ "cmd": "calibrate_high" }
-{ "cmd": "save_calibration" }
-{ "cmd": "save_settings", "noise": 0.3, "wait_time": 3 }
-{ "cmd": "change_account", "target": "2", "new_id": "penguji", "new_pw": "uji456" }
-```
+## Langkah Selanjutnya
 
-## Yang Sudah Ada di Kode
-
-Folder: `sketch_BBM_SideSlip_UNOR4WIFI.V4.0/`
-
-| File | Status |
-|------|--------|
-| `sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino` | Sensor + Serial + EEPROM + panggil web server |
-| `web_server.cpp` / `.h` | Web server port 80, routing 4 halaman + CSS |
-| `html_index.h` | Halaman login |
-| `html_pengujian.h` | **Halaman pengujian gaya SSP2000** (dark, angka besar, visual roda, tanpa ADC) |
-| `html_kalibrasi.h` | Halaman kalibrasi (tombol dasar) |
-| `html_config.h` | Halaman config (settings + ubah akun) |
-| `web_common.h` | CSS bersama |
-
-## Yang Masih Kurang
-
-| No | Bagian | Status | Keterangan |
-|----|--------|--------|------------|
-| 1 | **EEPROM** | Sudah | Load/save kalibrasi, settings, akun |
-| 2 | **Web Server** | **Sudah** | 4 halaman HTML + CSS + routing |
-| 3 | **WebSocket** | Belum | Streaming data real-time + terima command |
-| 4 | **Login System** | Belum | Validasi ID/PW ke Arduino + timeout |
-| 5 | **Halaman Kalibrasi** | Sebagian | UI ada, logika belum terhubung |
-| 6 | **Halaman Config** | Sebagian | UI ada, logika belum terhubung |
-| 7 | **Logika Pengujian** | Belum | Zero dinamis + peak plus/minus + stabil 3 detik |
-| 8 | **Perhitungan mm/m** | Belum | Hitung dari koefisien + nilai peak |
-| 9 | **Testing Dual Mode** | Belum | Uji Serial SSP2000 + WebSocket bersamaan |
-
-## Langkah Kerja Selanjutnya
-
-1. **WebSocket** (streaming data real-time ke halaman pengujian).
-2. Login system (validasi ke Arduino).
-3. Logika pengujian (zero dinamis + peak).
-4. Hubungkan tombol Kalibrasi & Config ke Arduino.
-5. Testing dual mode.
+1. **Login system** — validasi ID/PW
+2. **Ubah akun** — ID1 ganti ID1/ID2
+3. **Testing** — uji dengan mobil nyata
 
 ---
 
-**Status:** Halaman pengujian sudah mengikuti tampilan SSP2000 (tanpa ADC).  
-Siap lanjut ke **WebSocket**.
+**Status:** Core measurement sudah jalan. Siap lanjut ke login system.
