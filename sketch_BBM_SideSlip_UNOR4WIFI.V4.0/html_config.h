@@ -1,6 +1,6 @@
 /*
  * html_config.h
- * Config page - English, connected to Arduino
+ * Config page - load saved values
  */
 
 #ifndef HTML_CONFIG_H
@@ -138,6 +138,12 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
+    // Load saved settings
+    fetch('/settings/get').then(r => r.json()).then(d => {
+      if (d.noise !== undefined) document.getElementById('noise').value = d.noise;
+      if (d.wait !== undefined) document.getElementById('wait').value = d.wait;
+    }).catch(() => {});
+
     document.getElementById('btnSaveSettings').addEventListener('click', function() {
       const noise = document.getElementById('noise').value;
       const wait = document.getElementById('wait').value;
