@@ -1,6 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page - fixed status logic
+ * Measurement page with session check
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -97,6 +97,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       font-size: 15px;
     }
     .nav a:hover { background: #1557b0; }
+    .nav a.hidden { display: none; }
 
     @media (min-width: 800px) {
       body { padding-bottom: 16px; }
@@ -138,12 +139,48 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <div class="axle" id="axle">1</div>
 
   <div class="nav">
-    <a href="/">Logout</a>
-    <a href="/kalibrasi">Calibration</a>
-    <a href="/config">Config</a>
+    <a href="/" onclick="logout()">Logout</a>
+    <a href="/kalibrasi" id="linkCal" class="hidden">Calibration</a>
+    <a href="/config" id="linkConfig" class="hidden">Config</a>
   </div>
 
   <script>
+    const TIMEOUT_MS = 10 * 60 * 1000;
+    let lastActivity = Date.now();
+
+    function checkSession() {
+      const session = localStorage.getItem('session');
+      if (!session) {
+        window.location.href = '/';
+        return false;
+      }
+      const data = JSON.parse(session);
+      if (Date.now() - data.time > TIMEOUT_MS) {
+        localStorage.removeItem('session');
+        window.location.href = '/';
+        return false;
+      }
+      if (data.role === 'supervisor' || data.role === 'admin') {
+        document.getElementById('linkCal').classList.remove('hidden');
+        document.getElementById('linkConfig').classList.remove('hidden');
+      }
+      return true;
+    }
+
+    function updateActivity() {
+      lastActivity = Date.now();
+      const session = localStorage.getItem('session');
+      if (session) {
+        const data = JSON.parse(session);
+        data.time = Date.now();
+        localStorage.setItem('session', JSON.stringify(data));
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('session');
+    }
+
     function updateValue(val) {
       const el = document.getElementById('value');
       el.textContent = val.toFixed(1);
@@ -175,9 +212,11 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     }
 
     let errorCount = 0;
-    let lastResult = false;
 
     function pollData() {
+      if (!checkSession()) return;
+      updateActivity();
+      
       fetch('/data')
         .then(r => r.json())
         .then(data => {
@@ -194,6 +233,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
         });
     }
 
+    checkSession();
     setInterval(pollData, 200);
     pollData();
   </script>
