@@ -1,6 +1,6 @@
 /*
  * web_server.cpp
- * Web Server + endpoint /data, /cal/save, /settings/save
+ * Web Server + endpoint /data, /cal/save, /cal/get, /settings/save
  */
 
 #include "web_server.h"
@@ -69,8 +69,21 @@ void handleWebServer() {
     client.println();
     client.print(json);
   }
+  else if (path == "/cal/get") {
+    StaticJsonDocument<64> doc;
+    doc["zero"] = cal_zero_adc;
+    doc["high"] = cal_high_adc;
+
+    String json;
+    serializeJson(doc, json);
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Connection: close");
+    client.println();
+    client.print(json);
+  }
   else if (path == "/cal/save") {
-    // Parse query: zero=123&high=456
     int z = query.indexOf("zero=");
     int h = query.indexOf("high=");
     if (z >= 0 && h >= 0) {
@@ -78,6 +91,8 @@ void handleWebServer() {
       int amp = query.indexOf('&', h);
       cal_high_adc = query.substring(h + 5, amp > 0 ? amp : query.length()).toInt();
       saveToEEPROM();
+      Serial.print("Cal saved: zero="); Serial.print(cal_zero_adc);
+      Serial.print(" high="); Serial.println(cal_high_adc);
       client.println("HTTP/1.1 200 OK");
       client.println("Content-Type: text/plain");
       client.println("Connection: close");
@@ -90,7 +105,6 @@ void handleWebServer() {
     }
   }
   else if (path == "/settings/save") {
-    // Parse query: noise=0.3&wait=3
     int n = query.indexOf("noise=");
     int w = query.indexOf("wait=");
     if (n >= 0 && w >= 0) {
