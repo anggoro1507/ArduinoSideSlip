@@ -1,6 +1,6 @@
 /*
  * html_config.h
- * Config page - load saved values
+ * Config page with account change
  */
 
 #ifndef HTML_CONFIG_H
@@ -71,6 +71,7 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
       font-size: 12px;
       color: #888;
       margin-bottom: 10px;
+      line-height: 1.4;
     }
     .nav {
       position: fixed;
@@ -114,7 +115,10 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
 
   <div class="card">
     <h2>Change Account</h2>
-    <p class="hint">ID & Password max 15 characters. No spaces.</p>
+    <p class="hint">
+      Max 15 characters. Letters, numbers, symbols (@#$%&*+-_.) allowed.<br>
+      No spaces. No control characters.
+    </p>
     <div class="form-group">
       <label>Target Account</label>
       <select id="target">
@@ -138,10 +142,14 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    // Load saved settings
     fetch('/settings/get').then(r => r.json()).then(d => {
       if (d.noise !== undefined) document.getElementById('noise').value = d.noise;
       if (d.wait !== undefined) document.getElementById('wait').value = d.wait;
+    }).catch(() => {});
+
+    fetch('/account/get').then(r => r.json()).then(d => {
+      if (d.id1) document.getElementById('target').options[0].text = 'ID 1: ' + d.id1;
+      if (d.id2) document.getElementById('target').options[1].text = 'ID 2: ' + d.id2;
     }).catch(() => {});
 
     document.getElementById('btnSaveSettings').addEventListener('click', function() {
@@ -152,6 +160,35 @@ const char HTML_CONFIG[] PROGMEM = R"rawliteral(
         .then(t => {
           if (t === 'OK') alert('Settings saved');
           else alert('Failed');
+        })
+        .catch(() => alert('Error'));
+    });
+
+    document.getElementById('btnSaveAccount').addEventListener('click', function() {
+      const target = document.getElementById('target').value;
+      const newid = document.getElementById('newid').value;
+      const newpw = document.getElementById('newpw').value;
+      
+      if (newid.length === 0 || newpw.length === 0) {
+        alert('ID and Password required');
+        return;
+      }
+      if (newid.indexOf(' ') >= 0 || newpw.indexOf(' ') >= 0) {
+        alert('No spaces allowed');
+        return;
+      }
+      
+      fetch('/account/save?target=' + target + '&id=' + encodeURIComponent(newid) + '&pw=' + encodeURIComponent(newpw))
+        .then(r => r.text())
+        .then(t => {
+          if (t === 'OK') {
+            alert('Account saved');
+            document.getElementById('newid').value = '';
+            document.getElementById('newpw').value = '';
+            location.reload();
+          } else {
+            alert('Failed: ' + t);
+          }
         })
         .catch(() => alert('Error'));
     });
