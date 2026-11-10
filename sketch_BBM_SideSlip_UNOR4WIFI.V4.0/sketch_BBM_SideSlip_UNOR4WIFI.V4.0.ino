@@ -1,6 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
- * Baca data 37ms, measure 70ms
+ * Fix: reset result flag on new measurement
  */
 
 #include <WiFiS3.h>
@@ -89,7 +89,6 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  // Baca ADC setiap 37ms
   if (now - lastRead >= READ_INTERVAL_MS) {
     int raw14 = analogRead(SENSOR_PIN);
     int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
@@ -101,7 +100,6 @@ void loop() {
   handleSerialProtocol();
   handleWebServer();
 
-  // Measure setiap 70ms
   if (now - lastMeasure >= MEASURE_INTERVAL_MS) {
     if (!Calibration_Flag) {
       Measure(Int_ADC);
@@ -126,11 +124,15 @@ void Measure(int Data) {
     Get_Zero_ADC_Flag = false;
   }
 
+  // New measurement starts - reset result flag
   if (Zero_Potition_Flag && abs(Data - Zero_ADC) > noiseThreshold) {
+    Show_Result_Flag = false;
     if (Data > Zero_ADC) {
       High_ADC_flag = true;
+      High_ADC = Data;
     } else {
       High_ADC_flag = false;
+      Low_ADC = Data;
     }
     Zero_Potition_Flag = false;
     Stable_Check_Flag = false;
