@@ -5,20 +5,16 @@
  * Fitur:
  * - Sensor A5, ADC 14-bit dimapping ke 0-9999
  * - Serial protocol kompatibel SSP2000 (*XXXX# saat terima 'R', kirim terus)
- * - WiFi AP + Web Server + WebSocket realtime
+ * - WiFi AP + Web Server + HTTP polling /data
  * - Login: ID1 (Kepala), ID2 (Penguji), sa (Admin hardcoded)
  * - EEPROM untuk kalibrasi, settings, akun
  * - Dual Serial (Serial + Serial1)
- *
- * Library yang dibutuhkan:
- * - WebSockets by Markus Sattler (install via Library Manager)
  */
 
 #include <WiFiS3.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 #include "web_server.h"
-#include "web_socket.h"
 
 // ==================== KONFIGURASI ====================
 #define SENSOR_PIN          A5
@@ -26,7 +22,6 @@
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
 #define INTERVAL_MS         37
-#define WS_INTERVAL_MS      100
 
 // WiFi AP
 const char* AP_SSID         = "SideSlipBBM";
@@ -55,7 +50,6 @@ float sensorFilter          = 0;
 // Serial protocol state
 int rcv                     = 0;
 unsigned long per_37ms      = 0;
-unsigned long lastWsSend    = 0;
 
 // ==================== EEPROM MAP ====================
 #define EE_MAGIC            0
@@ -85,7 +79,6 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   setupWebServer();
-  setupWebSocket();
 }
 
 // ==================== LOOP ====================
@@ -100,17 +93,6 @@ void loop() {
 
   // Handle Web Server
   handleWebServer();
-
-  // Handle WebSocket
-  handleWebSocket();
-
-  // Broadcast data ke WebSocket setiap 100ms
-  unsigned long now = millis();
-  if (now - lastWsSend >= WS_INTERVAL_MS) {
-    float val = calculateSideSlip((int)sensorFilter);
-    broadcastData(val, (int)sensorFilter);
-    lastWsSend = now;
-  }
 }
 
 // ==================== SERIAL PROTOCOL (SSP2000) ====================
