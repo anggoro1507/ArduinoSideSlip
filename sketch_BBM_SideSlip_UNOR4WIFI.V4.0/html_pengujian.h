@@ -1,6 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page - HTTP polling, show peak result
+ * Measurement page - show zero status
  * Axle locked at 1
  */
 
@@ -55,6 +55,16 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       margin-top: 8px;
       color: #666;
     }
+    .status {
+      font-size: 14px;
+      margin-top: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .status.zeroed { background: #e8f5e9; color: #2e7d32; }
+    .status.measuring { background: #fff3e0; color: #e65100; }
+    .status.result { background: #e3f2fd; color: #1565c0; }
     .axle {
       background: #fff;
       border: 1px solid #ddd;
@@ -64,11 +74,6 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       margin: 20px 0;
       border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-    }
-    .status {
-      font-size: 12px;
-      color: #888;
-      margin-top: 8px;
     }
     .nav {
       position: fixed;
@@ -128,7 +133,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <div class="value-box">
     <div id="value" class="zero">0.0</div>
     <div class="unit">mm / m</div>
-    <div class="status" id="pollStatus">Polling...</div>
+    <div class="status zeroed" id="status">ZEROED</div>
   </div>
 
   <div class="axle" id="axle">1</div>
@@ -155,36 +160,40 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       document.getElementById('axle').textContent = '1';
     }
 
-    const statusEl = document.getElementById('pollStatus');
+    function updateStatus(zeroed, result) {
+      const el = document.getElementById('status');
+      el.className = 'status';
+      if (result) {
+        el.textContent = 'RESULT';
+        el.classList.add('result');
+      } else if (zeroed) {
+        el.textContent = 'ZEROED';
+        el.classList.add('zeroed');
+      } else {
+        el.textContent = 'MEASURING';
+        el.classList.add('measuring');
+      }
+    }
+
     let errorCount = 0;
-    let lastResult = false;
 
     function pollData() {
       fetch('/data')
         .then(r => r.json())
         .then(data => {
-          // Show peak if result available, else current value
           if (data.result && typeof data.peak === 'number') {
             updateValue(data.peak);
-            if (!lastResult) {
-              statusEl.textContent = 'Result';
-              lastResult = true;
-            }
           } else if (typeof data.value === 'number') {
             updateValue(data.value);
-            if (lastResult) {
-              statusEl.textContent = 'Live';
-              lastResult = false;
-            }
           }
-          statusEl.style.color = '#0a0';
+          updateStatus(data.zeroed, data.result);
           errorCount = 0;
         })
         .catch(() => {
           errorCount++;
           if (errorCount > 3) {
-            statusEl.textContent = 'No data';
-            statusEl.style.color = '#c00';
+            document.getElementById('status').textContent = 'NO DATA';
+            document.getElementById('status').className = 'status';
           }
         });
     }
