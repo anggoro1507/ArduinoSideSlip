@@ -1,6 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page with ZERO button
+ * Measurement page - reset after session confirmed
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -167,6 +167,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <script>
     const TIMEOUT_MS = 10 * 60 * 1000;
     let lastActivity = Date.now();
+    let sessionOk = false;
 
     function checkSession() {
       const session = localStorage.getItem('session');
@@ -238,7 +239,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     let errorCount = 0;
 
     function pollData() {
-      if (!checkSession()) return;
+      if (!sessionOk) return;
       updateActivity();
       
       fetch('/data')
@@ -257,9 +258,14 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
         });
     }
 
-    checkSession();
-    setInterval(pollData, 200);
-    pollData();
+    // Check session first, then reset
+    if (checkSession()) {
+      sessionOk = true;
+      fetch('/reset').then(() => {
+        setInterval(pollData, 200);
+        pollData();
+      });
+    }
   </script>
 </body>
 </html>
