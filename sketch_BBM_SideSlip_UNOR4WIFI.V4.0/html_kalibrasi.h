@@ -1,6 +1,7 @@
 /*
  * html_kalibrasi.h
- * Calibration page - auto-zero on page open
+ * Calibration page - match VB logic
+ * Cal_Real_Zero set on open and on ZERO press
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -167,7 +168,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     </div>
     <div class="cal-row">
       <span>ADC Data</span>
-      <span id="adc">0</span>
+      <span id="adc">-</span>
     </div>
     <div class="cal-row">
       <span>Value</span>
@@ -185,70 +186,72 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    let zeroAdc = null;
-    let highAdc = null;
-    let calZero = null;
-    let maxValue = 0;
-    let currentAdc = 0;
-    let initialized = false;
-
-    function getKoef() {
-      if (zeroAdc !== null && highAdc !== null && highAdc !== zeroAdc) {
-        return highAdc - zeroAdc;
-      }
-      return 256;
-    }
+    // Match VB: Cal_Real_Zero, Koef_ADC, Cal_Max_Real_Value
+    let Cal_Real_Zero = null;
+    let Koef_ADC = 256;
+    let Cal_Max_Real_Value = 0;
+    let Cal_Zero_ADC = null;
+    let Cal_High_ADC = null;
+    let Int_ADC = 0;
 
     function updateDisplay() {
-      if (calZero === null) return;
-      const koef = getKoef();
-      const real = (currentAdc - calZero) / koef * 10;
-      document.getElementById('adc').textContent = currentAdc;
-      document.getElementById('realValue').textContent = real.toFixed(1) + ' mm/m';
-      document.getElementById('currentValue').textContent = real.toFixed(1);
+      document.getElementById('adc').textContent = Int_ADC;
+      
+      if (Cal_Real_Zero === null) return;
+      
+      // VB: Cal_Real_Value = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10
+      let Cal_Real_Value = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10;
+      
+      document.getElementById('realValue').textContent = Cal_Real_Value.toFixed(1) + ' mm/m';
+      document.getElementById('currentValue').textContent = Cal_Real_Value.toFixed(1);
 
-      const pct = Math.min(100, (currentAdc / 9999) * 100);
+      const pct = Math.min(100, (Int_ADC / 9999) * 100);
       document.getElementById('prog').style.width = pct + '%';
 
-      if (Math.abs(real) > Math.abs(maxValue)) {
-        maxValue = real;
+      // Track max
+      if (Math.abs(Cal_Real_Value) > Math.abs(Cal_Max_Real_Value)) {
+        Cal_Max_Real_Value = Cal_Real_Value;
       }
-      document.getElementById('maxValue').textContent = maxValue.toFixed(1);
+      document.getElementById('maxValue').textContent = Cal_Max_Real_Value.toFixed(1);
     }
 
-    // Load saved cal values
+    // Load saved koef from EEPROM
     fetch('/cal/get').then(r => r.json()).then(d => {
       if (d.zero && d.high && d.high !== d.zero) {
-        zeroAdc = d.zero;
-        highAdc = d.high;
-        document.getElementById('zeroAdc').textContent = zeroAdc;
-        document.getElementById('highAdc').textContent = highAdc;
+        Cal_Zero_ADC = d.zero;
+        Cal_High_ADC = d.high;
+        Koef_ADC = Cal_High_ADC - Cal_Zero_ADC;
+        document.getElementById('zeroAdc').textContent = Cal_Zero_ADC;
+        document.getElementById('highAdc').textContent = Cal_High_ADC;
       }
     }).catch(() => {});
 
-    // Poll and auto-zero on first reading
+    // Poll ADC
     setInterval(() => {
       fetch('/data').then(r => r.json()).then(d => {
-        currentAdc = d.adc || 0;
-        if (!initialized && currentAdc > 0) {
-          calZero = currentAdc;
-          initialized = true;
-          maxValue = 0;
+        Int_ADC = d.adc || 0;
+        
+        // VB: on open, Cal_Real_Zero = LastData (first reading)
+        if (Cal_Real_Zero === null && Int_ADC > 0) {
+          Cal_Real_Zero = Int_ADC;
+          Cal_Max_Real_Value = 0;
         }
+        
         updateDisplay();
       }).catch(() => {});
     }, 200);
 
+    // VB: Zero_Click sets Cal_Real_Zero = LastData, Cal_Max_Real_Value = 0
     document.getElementById('btnZero').addEventListener('click', function() {
-      calZero = currentAdc;
-      maxValue = 0;
+      Cal_Real_Zero = Int_ADC;
+      Cal_Max_Real_Value = 0;
       updateDisplay();
       fetch('/reset').catch(() => {});
     });
 
     document.getElementById('btnNext').addEventListener('click', function() {
-      if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
-        fetch('/cal/save?zero=' + zeroAdc + '&high=' + highAdc)
+      if (this.textContent === 'SAVE' && Cal_Zero_ADC !== null && Cal_High_ADC !== null) {
+        fetch('/cal/save?zero=' + Cal_Zero_ADC + '&high=' + Cal_High_ADC)
           .then(r => r.text())
           .then(t => {
             if (t === 'OK') alert('Calibration saved');
@@ -258,13 +261,14 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
         return;
       }
       if (document.getElementById('radio0').checked) {
-        zeroAdc = currentAdc;
-        document.getElementById('zeroAdc').textContent = zeroAdc;
+        Cal_Zero_ADC = Int_ADC;
+        document.getElementById('zeroAdc').textContent = Cal_Zero_ADC;
         document.getElementById('radio0').checked = false;
         document.getElementById('radioHigh').checked = true;
       } else if (document.getElementById('radioHigh').checked) {
-        highAdc = currentAdc;
-        document.getElementById('highAdc').textContent = highAdc;
+        Cal_High_ADC = Int_ADC;
+        document.getElementById('highAdc').textContent = Cal_High_ADC;
+        Koef_ADC = Cal_High_ADC - Cal_Zero_ADC;
         this.textContent = 'SAVE';
       }
       updateDisplay();
