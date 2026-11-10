@@ -1,9 +1,9 @@
 /*
  * html_kalibrasi.h
- * Halaman Kalibrasi - mengikuti tampilan software SSP2000
- * - Panel kiri: Status + Calibration (radio, ADC, progress, NEXT/SAVE/EXIT)
- * - Tengah: Max (nilai terjauh) + nilai saat ini + tombol ZERO (manual)
- * - Tidak auto-zero, zero hanya saat tombol ZERO ditekan
+ * Halaman Kalibrasi - style putih/biru seperti login
+ * Tanpa status box
+ * Layout rapi untuk smartphone
+ * ZERO manual, Max tracking, ADC ditampilkan
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -14,168 +14,172 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>SideSlip - Kalibrasi</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
-      background: #000;
-      color: #fff;
       font-family: Arial, Helvetica, sans-serif;
-      overflow: hidden;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      border: 1px solid #fff;
-      background: #111;
-      padding: 8px;
-      font-size: 14px;
-      min-width: 180px;
-    }
-    .panel select, .panel button {
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 16px;
       width: 100%;
-      margin: 3px 0;
-      padding: 4px;
+      max-width: 360px;
+      margin-bottom: 16px;
     }
-    .indicator {
-      height: 16px;
-      background: #00f;
-      margin-top: 4px;
+    h2 {
+      font-size: 18px;
+      color: #1a73e8;
+      margin-bottom: 12px;
+      text-align: center;
     }
-    .cal-panel {
-      position: absolute;
-      top: 160px;
-      left: 10px;
-      border: 1px solid #fff;
-      background: #111;
-      padding: 10px;
-      font-size: 13px;
-      min-width: 180px;
+    .max-box {
+      text-align: center;
+      margin-bottom: 8px;
     }
-    .cal-panel label {
+    .max-label {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    #maxValue {
+      font-size: 42px;
+      font-weight: bold;
+      background: #555;
+      color: #fff;
+      padding: 8px 16px;
+      display: inline-block;
+      min-width: 120px;
+      border-radius: 6px;
+    }
+    .unit { font-size: 14px; color: #666; margin-top: 4px; }
+    .current-box {
+      text-align: center;
+      margin: 12px 0;
+    }
+    #currentValue {
+      font-size: 32px;
+      font-weight: bold;
+      background: #444;
+      color: #fff;
+      padding: 6px 14px;
+      display: inline-block;
+      min-width: 100px;
+      border-radius: 6px;
+    }
+    #btnZero {
       display: block;
-      margin: 4px 0;
+      width: 100%;
+      margin-top: 10px;
+      background: #c00;
+      color: #fff;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
     }
-    .cal-panel button {
-      width: 48%;
-      margin: 4px 1%;
-      padding: 6px;
+    .cal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
     }
+    .cal-row:last-child { border-bottom: none; }
     .progress {
-      height: 16px;
-      background: #333;
-      border: 1px solid #666;
-      margin: 6px 0;
+      height: 14px;
+      background: #eee;
+      border-radius: 7px;
+      margin: 10px 0;
+      overflow: hidden;
     }
     .progress-bar {
       height: 100%;
       background: #0a0;
       width: 0%;
     }
-    .max-box {
-      position: absolute;
-      top: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
     }
-    .max-label {
-      font-size: 18px;
-      margin-bottom: 4px;
-    }
-    #maxValue {
-      font-size: 48px;
-      font-weight: bold;
-      background: #444;
-      padding: 8px 24px;
-      display: inline-block;
-      min-width: 140px;
-    }
-    .current-box {
-      position: absolute;
-      bottom: 80px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-    }
-    #currentValue {
-      font-size: 36px;
-      font-weight: bold;
-      background: #444;
-      padding: 6px 20px;
-      display: inline-block;
-      min-width: 120px;
-    }
-    #btnZero {
-      margin-top: 8px;
-      background: #800;
-      color: #fff;
-      border: 1px solid #fff;
-      padding: 8px 20px;
-      font-size: 16px;
+    .btn-row button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
       cursor: pointer;
     }
-    .unit {
-      font-size: 14px;
-      margin-top: 2px;
-    }
+    #btnNext { background: #1a73e8; color: #fff; }
+    #btnExit { background: #666; color: #fff; }
     .nav {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
+      margin-top: 8px;
     }
     .nav a {
       color: #fff;
-      margin: 0 10px;
       text-decoration: none;
-      border: 1px solid #fff;
-      padding: 6px 12px;
+      background: #1a73e8;
+      padding: 12px 20px;
+      border-radius: 6px;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
-  <!-- Status Panel -->
-  <div class="panel">
-    <div>Status</div>
-    <select><option>WiFi AP</option></select>
-    <button>DISCONNECT</button>
-    <div class="indicator"></div>
+  <!-- Max -->
+  <div class="card">
+    <div class="max-box">
+      <div class="max-label">Max</div>
+      <div id="maxValue">0.0</div>
+      <div class="unit">mm / m</div>
+    </div>
+  </div>
+
+  <!-- Current + ZERO -->
+  <div class="card">
+    <div class="current-box">
+      <div id="currentValue">0.0</div>
+      <div class="unit">mm / m</div>
+      <button id="btnZero">ZERO</button>
+    </div>
   </div>
 
   <!-- Calibration Panel -->
-  <div class="cal-panel">
-    <div>Calibration</div>
-    <label>
-      <input type="radio" name="calPoint" id="radio0" checked> 0 mm/m
-      <span id="zeroAdc" style="float:right;">-</span>
-    </label>
-    <label>
-      <input type="radio" name="calPoint" id="radioHigh"> +10 mm/m
-      <span id="highAdc" style="float:right;">-</span>
-    </label>
-    <div>DATA ADC <span id="adc" style="float:right;">0</span></div>
-    <div id="realValue" style="text-align:right;">0.0 mm/m</div>
+  <div class="card">
+    <h2>Calibration</h2>
+    <div class="cal-row">
+      <label><input type="radio" name="calPoint" id="radio0" checked> 0 mm/m</label>
+      <span id="zeroAdc">-</span>
+    </div>
+    <div class="cal-row">
+      <label><input type="radio" name="calPoint" id="radioHigh"> +10 mm/m</label>
+      <span id="highAdc">-</span>
+    </div>
+    <div class="cal-row">
+      <span>DATA ADC</span>
+      <span id="adc">0</span>
+    </div>
+    <div class="cal-row">
+      <span>Nilai</span>
+      <span id="realValue">0.0 mm/m</span>
+    </div>
     <div class="progress"><div class="progress-bar" id="prog"></div></div>
-    <button id="btnNext">NEXT</button>
-    <button id="btnExit">EXIT</button>
-  </div>
-
-  <!-- Max Value (paling jauh) -->
-  <div class="max-box">
-    <div class="max-label">Max</div>
-    <div id="maxValue">0.0</div>
-    <div class="unit">mm / m</div>
-  </div>
-
-  <!-- Current Value + ZERO -->
-  <div class="current-box">
-    <div id="currentValue">0.0</div>
-    <div class="unit">mm / m</div>
-    <br>
-    <button id="btnZero">ZERO</button>
+    <div class="btn-row">
+      <button id="btnNext">NEXT</button>
+      <button id="btnExit">EXIT</button>
+    </div>
   </div>
 
   <div class="nav">
@@ -183,13 +187,12 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    // State kalibrasi
     let zeroAdc = null;
     let highAdc = null;
     let calZero = 0;
     let maxValue = 0;
-    let currentAdc = 0;
-    let koef = 256; // default sementara
+    let currentAdc = 512;
+    let koef = 256;
 
     function updateDisplay() {
       const real = (currentAdc - calZero) / koef * 10;
@@ -197,11 +200,9 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       document.getElementById('realValue').textContent = real.toFixed(1) + ' mm/m';
       document.getElementById('currentValue').textContent = real.toFixed(1);
 
-      // Progress (0-9999)
       const pct = Math.min(100, (currentAdc / 9999) * 100);
       document.getElementById('prog').style.width = pct + '%';
 
-      // Max = nilai dengan |absolut| terbesar
       if (Math.abs(real) > Math.abs(maxValue)) {
         maxValue = real;
       }
@@ -215,6 +216,11 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     });
 
     document.getElementById('btnNext').addEventListener('click', function() {
+      if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
+        const koefCalc = highAdc - zeroAdc;
+        alert('Simpan kalibrasi:\nZero ADC: ' + zeroAdc + '\nHigh ADC: ' + highAdc + '\nKoef: ' + koefCalc);
+        return;
+      }
       if (document.getElementById('radio0').checked) {
         zeroAdc = currentAdc;
         document.getElementById('zeroAdc').textContent = zeroAdc;
@@ -223,15 +229,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       } else if (document.getElementById('radioHigh').checked) {
         highAdc = currentAdc;
         document.getElementById('highAdc').textContent = highAdc;
-        document.getElementById('btnNext').textContent = 'SAVE';
-      }
-    });
-
-    document.getElementById('btnNext').addEventListener('click', function() {
-      if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
-        const koefCalc = highAdc - zeroAdc;
-        alert('Simpan kalibrasi:\nZero ADC: ' + zeroAdc + '\nHigh ADC: ' + highAdc + '\nKoef: ' + koefCalc);
-        // TODO: kirim ke Arduino
+        this.textContent = 'SAVE';
       }
     });
 
@@ -239,8 +237,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       window.location.href = '/pengujian';
     });
 
-    // Demo data (nanti diganti WebSocket)
-    currentAdc = 512;
     updateDisplay();
   </script>
 </body>
