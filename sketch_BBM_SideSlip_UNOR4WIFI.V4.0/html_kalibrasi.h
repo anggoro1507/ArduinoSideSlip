@@ -1,7 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - match VB logic
- * Cal_Real_Zero set on open and on ZERO press
+ * Display values from Arduino (no local calculation)
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -186,72 +185,38 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    // Match VB: Cal_Real_Zero, Koef_ADC, Cal_Max_Real_Value
-    let Cal_Real_Zero = null;
-    let Koef_ADC = 256;
-    let Cal_Max_Real_Value = 0;
-    let Cal_Zero_ADC = null;
-    let Cal_High_ADC = null;
-    let Int_ADC = 0;
+    let zeroAdc = null;
+    let highAdc = null;
 
-    function updateDisplay() {
-      document.getElementById('adc').textContent = Int_ADC;
-      
-      if (Cal_Real_Zero === null) return;
-      
-      // VB: Cal_Real_Value = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10
-      let Cal_Real_Value = (Int_ADC - Cal_Real_Zero) / Koef_ADC * 10;
-      
-      document.getElementById('realValue').textContent = Cal_Real_Value.toFixed(1) + ' mm/m';
-      document.getElementById('currentValue').textContent = Cal_Real_Value.toFixed(1);
-
-      const pct = Math.min(100, (Int_ADC / 9999) * 100);
-      document.getElementById('prog').style.width = pct + '%';
-
-      // Track max
-      if (Math.abs(Cal_Real_Value) > Math.abs(Cal_Max_Real_Value)) {
-        Cal_Max_Real_Value = Cal_Real_Value;
-      }
-      document.getElementById('maxValue').textContent = Cal_Max_Real_Value.toFixed(1);
-    }
-
-    // Load saved koef from EEPROM
     fetch('/cal/get').then(r => r.json()).then(d => {
-      if (d.zero && d.high && d.high !== d.zero) {
-        Cal_Zero_ADC = d.zero;
-        Cal_High_ADC = d.high;
-        Koef_ADC = Cal_High_ADC - Cal_Zero_ADC;
-        document.getElementById('zeroAdc').textContent = Cal_Zero_ADC;
-        document.getElementById('highAdc').textContent = Cal_High_ADC;
+      if (d.zero) {
+        zeroAdc = d.zero;
+        document.getElementById('zeroAdc').textContent = zeroAdc;
+      }
+      if (d.high) {
+        highAdc = d.high;
+        document.getElementById('highAdc').textContent = highAdc;
       }
     }).catch(() => {});
 
-    // Poll ADC
     setInterval(() => {
       fetch('/data').then(r => r.json()).then(d => {
-        Int_ADC = d.adc || 0;
-        
-        // VB: on open, Cal_Real_Zero = LastData (first reading)
-        if (Cal_Real_Zero === null && Int_ADC > 0) {
-          Cal_Real_Zero = Int_ADC;
-          Cal_Max_Real_Value = 0;
-        }
-        
-        updateDisplay();
+        document.getElementById('adc').textContent = d.adc || 0;
+        document.getElementById('currentValue').textContent = (d.value || 0).toFixed(1);
+        document.getElementById('realValue').textContent = (d.value || 0).toFixed(1) + ' mm/m';
+        document.getElementById('maxValue').textContent = (d.max || 0).toFixed(1);
+        const pct = Math.min(100, ((d.adc || 0) / 9999) * 100);
+        document.getElementById('prog').style.width = pct + '%';
       }).catch(() => {});
     }, 200);
 
-    // VB: Zero_Click sets Cal_Real_Zero = LastData, Cal_Max_Real_Value = 0
     document.getElementById('btnZero').addEventListener('click', function() {
-      Cal_Real_Zero = Int_ADC;
-      Cal_Max_Real_Value = 0;
-      updateDisplay();
       fetch('/reset').catch(() => {});
     });
 
     document.getElementById('btnNext').addEventListener('click', function() {
-      if (this.textContent === 'SAVE' && Cal_Zero_ADC !== null && Cal_High_ADC !== null) {
-        fetch('/cal/save?zero=' + Cal_Zero_ADC + '&high=' + Cal_High_ADC)
+      if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
+        fetch('/cal/save?zero=' + zeroAdc + '&high=' + highAdc)
           .then(r => r.text())
           .then(t => {
             if (t === 'OK') alert('Calibration saved');
@@ -260,18 +225,18 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
           .catch(() => alert('Error'));
         return;
       }
-      if (document.getElementById('radio0').checked) {
-        Cal_Zero_ADC = Int_ADC;
-        document.getElementById('zeroAdc').textContent = Cal_Zero_ADC;
-        document.getElementById('radio0').checked = false;
-        document.getElementById('radioHigh').checked = true;
-      } else if (document.getElementById('radioHigh').checked) {
-        Cal_High_ADC = Int_ADC;
-        document.getElementById('highAdc').textContent = Cal_High_ADC;
-        Koef_ADC = Cal_High_ADC - Cal_Zero_ADC;
-        this.textContent = 'SAVE';
-      }
-      updateDisplay();
+      fetch('/data').then(r => r.json()).then(d => {
+        if (document.getElementById('radio0').checked) {
+          zeroAdc = d.adc;
+          document.getElementById('zeroAdc').textContent = zeroAdc;
+          document.getElementById('radio0').checked = false;
+          document.getElementById('radioHigh').checked = true;
+        } else if (document.getElementById('radioHigh').checked) {
+          highAdc = d.adc;
+          document.getElementById('highAdc').textContent = highAdc;
+          this.textContent = 'SAVE';
+        }
+      });
     });
 
     document.getElementById('btnExit').addEventListener('click', function() {
