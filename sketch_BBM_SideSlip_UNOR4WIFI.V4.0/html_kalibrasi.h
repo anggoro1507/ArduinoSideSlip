@@ -1,6 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - English
+ * Calibration page - English, connected to Arduino
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -41,15 +41,8 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       margin-bottom: 12px;
       text-align: center;
     }
-    .max-box {
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    .max-label {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 4px;
-    }
+    .max-box { text-align: center; margin-bottom: 8px; }
+    .max-label { font-size: 14px; color: #666; margin-bottom: 4px; }
     #maxValue {
       font-size: 42px;
       font-weight: bold;
@@ -61,10 +54,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       border-radius: 6px;
     }
     .unit { font-size: 14px; color: #666; margin-top: 4px; }
-    .current-box {
-      text-align: center;
-      margin: 12px 0;
-    }
+    .current-box { text-align: center; margin: 12px 0; }
     #currentValue {
       font-size: 32px;
       font-weight: bold;
@@ -199,7 +189,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     let highAdc = null;
     let calZero = 0;
     let maxValue = 0;
-    let currentAdc = 512;
+    let currentAdc = 0;
     let koef = 256;
 
     function updateDisplay() {
@@ -217,6 +207,14 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       document.getElementById('maxValue').textContent = maxValue.toFixed(1);
     }
 
+    // Poll ADC
+    setInterval(() => {
+      fetch('/data').then(r => r.json()).then(d => {
+        currentAdc = d.adc || 0;
+        updateDisplay();
+      }).catch(() => {});
+    }, 200);
+
     document.getElementById('btnZero').addEventListener('click', function() {
       calZero = currentAdc;
       maxValue = 0;
@@ -225,8 +223,13 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
 
     document.getElementById('btnNext').addEventListener('click', function() {
       if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
-        const koefCalc = highAdc - zeroAdc;
-        alert('Save calibration:\nZero ADC: ' + zeroAdc + '\nHigh ADC: ' + highAdc + '\nCoeff: ' + koefCalc);
+        fetch('/cal/save?zero=' + zeroAdc + '&high=' + highAdc)
+          .then(r => r.text())
+          .then(t => {
+            if (t === 'OK') alert('Calibration saved');
+            else alert('Failed');
+          })
+          .catch(() => alert('Error'));
         return;
       }
       if (document.getElementById('radio0').checked) {
