@@ -1,6 +1,7 @@
 /*
  * html_kalibrasi.h
  * Calibration page - English, connected to Arduino
+ * Koefisien dihitung dari zero dan high (bukan hardcoded)
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -190,9 +191,16 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     let calZero = 0;
     let maxValue = 0;
     let currentAdc = 0;
-    let koef = 256;
+
+    function getKoef() {
+      if (zeroAdc !== null && highAdc !== null && highAdc !== zeroAdc) {
+        return highAdc - zeroAdc;
+      }
+      return 256;
+    }
 
     function updateDisplay() {
+      const koef = getKoef();
       const real = (currentAdc - calZero) / koef * 10;
       document.getElementById('adc').textContent = currentAdc;
       document.getElementById('realValue').textContent = real.toFixed(1) + ' mm/m';
@@ -207,7 +215,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       document.getElementById('maxValue').textContent = maxValue.toFixed(1);
     }
 
-    // Poll ADC
     setInterval(() => {
       fetch('/data').then(r => r.json()).then(d => {
         currentAdc = d.adc || 0;
@@ -242,6 +249,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
         document.getElementById('highAdc').textContent = highAdc;
         this.textContent = 'SAVE';
       }
+      updateDisplay();
     });
 
     document.getElementById('btnExit').addEventListener('click', function() {
