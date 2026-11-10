@@ -3,7 +3,7 @@
  * Halaman Pengujian - style putih/biru
  * Angka di atas
  * Menu tidak ketutup di smartphone
- * Responsive: kecil di smartphone, besar di PC
+ * WebSocket realtime
  * Axle di-lock di 1
  */
 
@@ -68,6 +68,11 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       border-radius: 10px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
+    .status {
+      font-size: 12px;
+      color: #888;
+      margin-top: 8px;
+    }
     .nav {
       position: fixed;
       bottom: 0;
@@ -92,7 +97,6 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     }
     .nav a:hover { background: #1557b0; }
 
-    /* PC / layar besar */
     @media (min-width: 800px) {
       body { padding-bottom: 16px; }
       .nav {
@@ -127,6 +131,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <div class="value-box">
     <div id="value" class="zero">0.0</div>
     <div class="unit">mm / m</div>
+    <div class="status" id="wsStatus">Connecting...</div>
   </div>
 
   <div class="axle" id="axle">1</div>
@@ -152,7 +157,34 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       }
       document.getElementById('axle').textContent = '1';
     }
-    updateValue(0);
+
+    // WebSocket
+    const ws = new WebSocket('ws://' + location.hostname + ':81');
+    const statusEl = document.getElementById('wsStatus');
+
+    ws.onopen = function() {
+      statusEl.textContent = 'Connected';
+      statusEl.style.color = '#0a0';
+    };
+
+    ws.onclose = function() {
+      statusEl.textContent = 'Disconnected';
+      statusEl.style.color = '#c00';
+    };
+
+    ws.onerror = function() {
+      statusEl.textContent = 'Error';
+      statusEl.style.color = '#c00';
+    };
+
+    ws.onmessage = function(evt) {
+      try {
+        const data = JSON.parse(evt.data);
+        if (typeof data.value === 'number') {
+          updateValue(data.value);
+        }
+      } catch(e) {}
+    };
   </script>
 </body>
 </html>
