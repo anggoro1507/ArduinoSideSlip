@@ -1,6 +1,6 @@
 /*
  * sketch_BBM_SideSlip_UNOR4WIFI.V4.0.ino
- * Rate limited measurement (37ms)
+ * Baca data 37ms, measure 70ms
  */
 
 #include <WiFiS3.h>
@@ -12,8 +12,8 @@
 #define ADC_MAX_14BIT       16383
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
-#define INTERVAL_MS         37
-#define MEASURE_INTERVAL_MS 37
+#define READ_INTERVAL_MS    37
+#define MEASURE_INTERVAL_MS 70
 
 const char* AP_SSID         = "SideSlipBBM";
 const char* AP_PASSWORD     = "12345678";
@@ -36,7 +36,7 @@ float alpha                 = 0.5f;
 float sensorFilter          = 0;
 
 int rcv                     = 0;
-unsigned long per_37ms      = 0;
+unsigned long lastRead      = 0;
 unsigned long lastMeasure   = 0;
 
 int Int_ADC                 = 0;
@@ -87,16 +87,22 @@ void setup() {
 }
 
 void loop() {
-  int raw14 = analogRead(SENSOR_PIN);
-  int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
-  sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
+  unsigned long now = millis();
+
+  // Baca ADC setiap 37ms
+  if (now - lastRead >= READ_INTERVAL_MS) {
+    int raw14 = analogRead(SENSOR_PIN);
+    int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
+    sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
+    Int_ADC = (int)sensorFilter;
+    lastRead = now;
+  }
 
   handleSerialProtocol();
   handleWebServer();
 
-  unsigned long now = millis();
+  // Measure setiap 70ms
   if (now - lastMeasure >= MEASURE_INTERVAL_MS) {
-    Int_ADC = (int)sensorFilter;
     if (!Calibration_Flag) {
       Measure(Int_ADC);
     }
@@ -199,10 +205,9 @@ void handleSerialProtocol() {
 
   if (rcv == 82) {
     unsigned long currentTime = millis();
-    if (currentTime - per_37ms > INTERVAL_MS) {
+    if (currentTime - lastRead > READ_INTERVAL_MS) {
       sendADCData(Serial);
       sendADCData(Serial1);
-      per_37ms = currentTime;
     }
   }
 }
