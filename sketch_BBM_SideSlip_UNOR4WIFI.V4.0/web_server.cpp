@@ -280,7 +280,6 @@ void handleWebServer() {
     }
     else if (path == "/pengujian") {
       setCalibrationMode(false);
-      resetMeasurement();
       client.print(HTML_PENGUJIAN);
     }
     else if (path == "/kalibrasi") {
