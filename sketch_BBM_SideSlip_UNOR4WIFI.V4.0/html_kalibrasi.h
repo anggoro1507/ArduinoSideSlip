@@ -1,9 +1,6 @@
 /*
  * html_kalibrasi.h
- * Halaman Kalibrasi - style putih/biru seperti login
- * Tanpa status box
- * Layout rapi untuk smartphone
- * ZERO manual, Max tracking, ADC ditampilkan
+ * Calibration page - English
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -15,7 +12,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>SideSlip - Kalibrasi</title>
+  <title>SideSlip - Calibration</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -24,6 +21,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       color: #333;
       min-height: 100vh;
       padding: 16px;
+      padding-bottom: 80px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -125,7 +123,17 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     #btnNext { background: #1a73e8; color: #fff; }
     #btnExit { background: #666; color: #fff; }
     .nav {
-      margin-top: 8px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #f0f2f5;
+      padding: 12px 16px;
+      padding-bottom: max(16px, env(safe-area-inset-bottom));
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
     }
     .nav a {
       color: #fff;
@@ -133,12 +141,14 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       background: #1a73e8;
       padding: 12px 20px;
       border-radius: 6px;
-      display: inline-block;
+    }
+    @media (min-width: 800px) {
+      body { padding-bottom: 16px; }
+      .nav { position: static; margin-top: auto; box-shadow: none; }
     }
   </style>
 </head>
 <body>
-  <!-- Max -->
   <div class="card">
     <div class="max-box">
       <div class="max-label">Max</div>
@@ -147,7 +157,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     </div>
   </div>
 
-  <!-- Current + ZERO -->
   <div class="card">
     <div class="current-box">
       <div id="currentValue">0.0</div>
@@ -156,7 +165,6 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     </div>
   </div>
 
-  <!-- Calibration Panel -->
   <div class="card">
     <h2>Calibration</h2>
     <div class="cal-row">
@@ -168,11 +176,11 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
       <span id="highAdc">-</span>
     </div>
     <div class="cal-row">
-      <span>DATA ADC</span>
+      <span>ADC Data</span>
       <span id="adc">0</span>
     </div>
     <div class="cal-row">
-      <span>Nilai</span>
+      <span>Value</span>
       <span id="realValue">0.0 mm/m</span>
     </div>
     <div class="progress"><div class="progress-bar" id="prog"></div></div>
@@ -183,7 +191,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   </div>
 
   <div class="nav">
-    <a href="/pengujian">Kembali ke Pengujian</a>
+    <a href="/pengujian">Back to Measurement</a>
   </div>
 
   <script>
@@ -218,7 +226,7 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
     document.getElementById('btnNext').addEventListener('click', function() {
       if (this.textContent === 'SAVE' && zeroAdc !== null && highAdc !== null) {
         const koefCalc = highAdc - zeroAdc;
-        alert('Simpan kalibrasi:\nZero ADC: ' + zeroAdc + '\nHigh ADC: ' + highAdc + '\nKoef: ' + koefCalc);
+        alert('Save calibration:\nZero ADC: ' + zeroAdc + '\nHigh ADC: ' + highAdc + '\nCoeff: ' + koefCalc);
         return;
       }
       if (document.getElementById('radio0').checked) {
