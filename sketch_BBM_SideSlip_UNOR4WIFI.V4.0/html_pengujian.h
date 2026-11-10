@@ -1,9 +1,9 @@
 /*
  * html_pengujian.h
  * Halaman Pengujian - mengikuti tampilan software SSP2000
- * Tidak menampilkan ADC mentah
+ * Menggunakan background image dari SSP2000/Resources/
  * Warna: Merah jika |nilai| > 5 mm/m, Hijau jika normal, Abu jika nol
- * Axle di-lock di 1 (tidak naik meski lewat berkali-kali)
+ * Axle di-lock di 1
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -19,10 +19,12 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   <style>
     body {
       margin: 0;
-      background: #000;
+      background: #000 url('/img/SS_Zero.png') center center no-repeat;
+      background-size: cover;
       color: #fff;
       font-family: Arial, Helvetica, sans-serif;
       overflow: hidden;
+      height: 100vh;
     }
     .status-box {
       position: absolute;
@@ -32,6 +34,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       padding: 8px;
       background: #111;
       font-size: 14px;
+      z-index: 10;
     }
     .status-box select, .status-box button {
       width: 140px;
@@ -45,10 +48,11 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     }
     .value-box {
       position: absolute;
-      top: 80px;
+      top: 60px;
       left: 50%;
       transform: translateX(-50%);
       text-align: center;
+      z-index: 10;
     }
     #value {
       font-size: 72px;
@@ -58,8 +62,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       display: inline-block;
       min-width: 180px;
     }
-    #value.ok { background: #0a0; }      /* hijau: dalam batas */
-    #value.over { background: #c00; }    /* merah: |nilai| > 5 */
+    #value.ok { background: #0a0; }
+    #value.over { background: #c00; }
     #value.zero { background: #555; }
     .unit {
       font-size: 20px;
@@ -67,7 +71,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     }
     .axle {
       position: absolute;
-      bottom: 120px;
+      bottom: 140px;
       left: 50%;
       transform: translateX(-50%);
       background: #333;
@@ -76,37 +80,14 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       font-size: 28px;
       min-width: 60px;
       text-align: center;
+      z-index: 10;
     }
-    .wheels {
-      position: absolute;
-      bottom: 40px;
-      width: 100%;
-      height: 200px;
-    }
-    .wheel {
-      position: absolute;
-      width: 80px;
-      height: 140px;
-      background: linear-gradient(#888, #444);
-      border-radius: 8px;
-      bottom: 20px;
-    }
-    .wheel.left { left: 15%; }
-    .wheel.right { right: 15%; }
-    .line {
-      position: absolute;
-      width: 2px;
-      height: 180px;
-      background: #fff;
-      bottom: 0;
-    }
-    .line.left { left: 22%; }
-    .line.right { right: 22%; }
     .nav {
       position: absolute;
       bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 10;
     }
     .nav a {
       color: #fff;
@@ -114,6 +95,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       text-decoration: none;
       border: 1px solid #fff;
       padding: 6px 12px;
+      background: #222;
     }
   </style>
 </head>
@@ -130,15 +112,7 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     <div class="unit">mm / m</div>
   </div>
 
-  <!-- Axle di-lock di 1 -->
   <div class="axle" id="axle">1</div>
-
-  <div class="wheels">
-    <div class="wheel left"></div>
-    <div class="line left"></div>
-    <div class="wheel right"></div>
-    <div class="line right"></div>
-  </div>
 
   <div class="nav">
     <a href="/">Logout</a>
@@ -147,10 +121,6 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
-    // Update nilai + warna
-    // Merah jika |nilai| > 5 mm/m
-    // Hijau jika dalam batas
-    // Abu jika nol
     function updateValue(val) {
       const el = document.getElementById('value');
       el.textContent = val.toFixed(1);
@@ -158,15 +128,16 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
       const abs = Math.abs(val);
       if (abs < 0.05) {
         el.classList.add('zero');
+        document.body.style.backgroundImage = "url('/img/SS_Zero.png')";
       } else if (abs > 5.0) {
         el.classList.add('over');
+        document.body.style.backgroundImage = val > 0 ? "url('/img/SS_Positive.png')" : "url('/img/SS_Negative.png')";
       } else {
         el.classList.add('ok');
+        document.body.style.backgroundImage = val >= 0 ? "url('/img/SS_Positive.png')" : "url('/img/SS_Negative.png')";
       }
-      // Axle tetap 1
       document.getElementById('axle').textContent = '1';
     }
-    // Demo
     updateValue(0);
   </script>
 </body>
