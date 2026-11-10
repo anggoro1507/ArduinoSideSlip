@@ -1,6 +1,6 @@
 /*
  * html_kalibrasi.h
- * Calibration page - show ADC immediately
+ * Calibration page - role check
  */
 
 #ifndef HTML_KALIBRASI_H
@@ -185,6 +185,20 @@ const char HTML_KALIBRASI[] PROGMEM = R"rawliteral(
   </div>
 
   <script>
+    // Check role first
+    (function() {
+      const session = localStorage.getItem('session');
+      if (!session) {
+        window.location.href = '/';
+        return;
+      }
+      const data = JSON.parse(session);
+      if (data.role !== 'supervisor' && data.role !== 'admin') {
+        window.location.href = '/pengujian';
+        return;
+      }
+    })();
+
     let zeroAdc = null;
     let highAdc = null;
 
