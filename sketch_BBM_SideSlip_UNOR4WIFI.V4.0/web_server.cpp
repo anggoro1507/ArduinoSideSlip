@@ -1,7 +1,6 @@
 /*
  * web_server.cpp
- * Implementasi Web Server untuk Side Slip R4
- * Melayani halaman HTML via WiFi AP
+ * Web Server + endpoint /data untuk polling
  */
 
 #include "web_server.h"
@@ -10,8 +9,16 @@
 #include "html_kalibrasi.h"
 #include "html_config.h"
 #include "web_common.h"
+#include <ArduinoJson.h>
 
 WiFiServer server(80);
+
+// External dari main sketch
+extern float sensorFilter;
+extern int cal_zero_adc;
+extern int cal_high_adc;
+
+float calculateSideSlip(int adc);
 
 void setupWebServer() {
   server.begin();
@@ -32,11 +39,27 @@ void handleWebServer() {
     path = request.substring(start + 1, end);
   }
 
-  // Hapus query string jika ada
   int q = path.indexOf('?');
   if (q > 0) path = path.substring(0, q);
 
-  if (path == "/style.css") {
+  if (path == "/data") {
+    // JSON data untuk polling
+    float val = calculateSideSlip((int)sensorFilter);
+    StaticJsonDocument<128> doc;
+    doc["value"] = val;
+    doc["adc"] = (int)sensorFilter;
+
+    String json;
+    serializeJson(doc, json);
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("Connection: close");
+    client.println();
+    client.print(json);
+  }
+  else if (path == "/style.css") {
     client.println("HTTP/1.1 200 OK");
     client.println("Content-Type: text/css");
     client.println("Connection: close");
@@ -62,7 +85,7 @@ void handleWebServer() {
       client.print(HTML_CONFIG);
     }
     else {
-      client.print("<h1>404 Not Found</h1><a href='/'>Kembali</a>");
+      client.print("<h1>404 Not Found</h1><a href='/'>Back</a>");
     }
   }
 
