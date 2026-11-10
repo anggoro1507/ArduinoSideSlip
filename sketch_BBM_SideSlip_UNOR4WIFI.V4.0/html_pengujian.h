@@ -1,6 +1,6 @@
 /*
  * html_pengujian.h
- * Measurement page with session check
+ * Measurement page with ZERO button
  */
 
 #ifndef HTML_PENGUJIAN_H
@@ -64,6 +64,19 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     .status.zeroed { background: #e8f5e9; color: #2e7d32; }
     .status.measuring { background: #fff3e0; color: #e65100; }
     .status.result { background: #e3f2fd; color: #1565c0; }
+    #btnZero {
+      display: block;
+      width: 100%;
+      max-width: 320px;
+      margin-top: 12px;
+      background: #c00;
+      color: #fff;
+      border: none;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
     .axle {
       background: #fff;
       border: 1px solid #ddd;
@@ -118,6 +131,11 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
         padding: 16px 32px;
       }
       .unit { font-size: 22px; }
+      #btnZero {
+        max-width: 480px;
+        font-size: 20px;
+        padding: 18px;
+      }
       .axle {
         font-size: 42px;
         padding: 18px 48px;
@@ -135,6 +153,8 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
     <div class="unit">mm / m</div>
     <div class="status zeroed" id="status">ZEROED</div>
   </div>
+
+  <button id="btnZero">ZERO</button>
 
   <div class="axle" id="axle">1</div>
 
@@ -210,6 +230,10 @@ const char HTML_PENGUJIAN[] PROGMEM = R"rawliteral(
         el.classList.add('measuring');
       }
     }
+
+    document.getElementById('btnZero').addEventListener('click', function() {
+      fetch('/reset').catch(() => {});
+    });
 
     let errorCount = 0;
 
