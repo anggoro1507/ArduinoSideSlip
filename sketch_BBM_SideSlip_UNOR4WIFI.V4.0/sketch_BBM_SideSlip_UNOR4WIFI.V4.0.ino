@@ -96,7 +96,7 @@ void loop() {
     int raw12 = analogRead(SENSOR_PIN);
     int adc4digit = raw12; 
     sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
-    Int_ADC = (int)sensorFilter;
+    Int_ADC = map((int)sensorFilter, 0, 4095, 0, 9999);
     lastRead = now;
   }
 
