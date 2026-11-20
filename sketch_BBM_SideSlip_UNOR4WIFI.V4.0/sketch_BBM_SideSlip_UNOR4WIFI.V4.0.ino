@@ -10,6 +10,7 @@
 
 #define SENSOR_PIN          A5
 #define ADC_MAX_14BIT       16383
+#define ADC_MAX_12BIT       4095
 #define ADC_MAX_4DIGIT      9999
 #define SERIAL_BAUD         9600
 #define READ_INTERVAL_MS    37
@@ -77,7 +78,7 @@ unsigned long t2            = 0;
 void setup() {
   Serial.begin(SERIAL_BAUD);
   Serial1.begin(SERIAL_BAUD);
-  analogReadResolution(14);
+  analogReadResolution(12);
   EEPROM.begin();
   loadFromEEPROM();
 
@@ -92,8 +93,8 @@ void loop() {
   unsigned long now = millis();
 
   if (now - lastRead >= READ_INTERVAL_MS) {
-    int raw14 = analogRead(SENSOR_PIN);
-    int adc4digit = map(raw14, 0, ADC_MAX_14BIT, 0, ADC_MAX_4DIGIT);
+    int raw12 = analogRead(SENSOR_PIN);
+    int adc4digit = raw12; 
     sensorFilter = alpha * adc4digit + (1.0 - alpha) * sensorFilter;
     Int_ADC = (int)sensorFilter;
     lastRead = now;
