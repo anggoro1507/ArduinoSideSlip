@@ -14,13 +14,20 @@ Migrasi dari Arduino Uno R3 ke **Arduino Uno R4 WiFi**.
 | Aspek | Keputusan |
 |-------|-----------|
 | **WiFi** | AP Mode, SSID: `SideSlipBBM`, Password: `12345678` |
-| **ADC** | 14-bit → mapping 0–9999 |
+| **ADC** | **12-bit** → mapping 0–9999 (diturunkan dari 14-bit karena noise/tidak stabil) |
 | **Kalibrasi** | Simpan koefisien (Zero + High), High = 10 mm/m |
 | **Penyimpanan** | EEPROM |
 | **Serial** | Serial (USB) + Serial1, 9600 baud |
 | **Noise Tolerance** | % dari 9999 |
 | **Magic Bytes** | `0xB2C0` |
 | **Data Rate** | Baca 37ms, Measure 70ms |
+
+## Catatan ADC
+
+- **Awal**: 14-bit (0–16383) di-mapping ke 0–9999.
+- **Perubahan**: Diturunkan ke **12-bit** (0–4095) karena pembacaan ADC tidak stabil (noise tinggi).
+- Mapping tetap ke 0–9999 agar kompatibel dengan format 4-digit protokol SSP2000 (`*XXXX#`).
+- Kode: `analogReadResolution(12);` di `setup()`.
 
 ## Status Implementasi
 
@@ -96,4 +103,4 @@ Siap untuk mobil berikutnya
 
 ---
 
-**Status:** Core measurement sudah jalan. Siap lanjut ke login system.
+**Status:** Core measurement sudah jalan. ADC diturunkan ke 12-bit untuk stabilitas. Siap lanjut ke login system.
